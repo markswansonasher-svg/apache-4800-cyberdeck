@@ -10,6 +10,7 @@
     "  process     the process name that means it's running (default: the exe's name)",
     "  mcp         the name of its MCP server in Claude's settings - shows whether Claude has it",
     "  envkey      Windows user variable(s) that must be set, several separated by ; (shows saved / missing, never the value)",
+    "  heartbeat   {file, max_age_s, on, off}: shows 'running' while that file keeps being rewritten",
     "  note        a short line of help",
     "  actions     extra buttons: label + run (+ args). ask_folder: true asks for a folder and adds it to args.",
     "              run can be a program, a script, a folder, a file or a web address."
@@ -332,6 +333,45 @@
             {
               "label": "Setup kit",
               "run": "C:\\deck\\setup-kit"
+            }
+          ]
+        },
+        {
+          "name": "Discord bot",
+          "note": "Posts server up/down, joins, backups and heat warnings in Discord, and answers /mc and /deck commands. Runs on this PC until the Pi is set up - then the Pi runs it: turn the PC copy off here.",
+          "heartbeat": {
+            "file": "C:\\deck\\bot\\state\\state.json",
+            "max_age_s": 120,
+            "on": "running on this PC",
+            "off": "not running on this PC"
+          },
+          "actions": [
+            {
+              "label": "Open Discord",
+              "run": "https://discord.com/app"
+            },
+            {
+              "label": "Log",
+              "run": "C:\\deck\\bot\\state\\deckhost.log"
+            },
+            {
+              "label": "Change channel / token...",
+              "run": "powershell.exe",
+              "args": "-NoExit -NoProfile -ExecutionPolicy Bypass -File \"C:\\deck\\bot\\set-discord-bot.ps1\""
+            },
+            {
+              "label": "Turn PC copy on",
+              "run": "powershell.exe",
+              "args": "-NoExit -NoProfile -ExecutionPolicy Bypass -File \"C:\\deck\\bot\\install-bot.ps1\""
+            },
+            {
+              "label": "Turn PC copy off",
+              "run": "powershell.exe",
+              "args": "-NoExit -NoProfile -ExecutionPolicy Bypass -File \"C:\\deck\\bot\\install-bot.ps1\" -Remove"
+            },
+            {
+              "label": "Developer portal",
+              "run": "https://discord.com/developers/applications"
             }
           ]
         },

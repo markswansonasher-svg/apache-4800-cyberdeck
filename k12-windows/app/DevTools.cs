@@ -30,6 +30,8 @@ namespace Cyberdeck
         Label info;
         // "running" labels to refresh: label -> process names
         readonly List<KeyValuePair<Label, string[]>> running = new List<KeyValuePair<Label, string[]>>();
+        // "heartbeat" labels: label -> the item (its heartbeat file is fresh = running)
+        readonly List<KeyValuePair<Label, J>> beats = new List<KeyValuePair<Label, J>>();
 
         public DevToolsPage(MainForm a) : base(a) { }
         public override string Title { get { return "Dev tools"; } }
@@ -58,6 +60,18 @@ namespace Cyberdeck
                 bool on = kv.Value.Any(n => Process.GetProcessesByName(n).Length > 0);
                 kv.Key.Text = on ? "● running" : "";
             }
+            foreach (var kv in beats)
+            {
+                // heartbeat: a file the tool rewrites while it runs (e.g. the bot's watchdog every 30 s)
+                var hb = kv.Value["heartbeat"];
+                string path = Expand(hb["file"].Str);
+                double maxAge = hb["max_age_s"].Num > 0 ? hb["max_age_s"].Num : 120;
+                bool fresh = false;
+                try { fresh = File.Exists(path) && (DateTime.Now - File.GetLastWriteTime(path)).TotalSeconds < maxAge; } catch { }
+                kv.Key.Text = fresh ? "● " + (hb["on"].Str.Length > 0 ? hb["on"].Str : "running")
+                                    : (hb["off"].Str.Length > 0 ? hb["off"].Str : "not running");
+                kv.Key.ForeColor = fresh ? Ui.Good : Ui.Dim;
+            }
         }
 
         // devtools.json, made from the default the first time
@@ -72,6 +86,7 @@ namespace Cyberdeck
             cards.SuspendLayout();
             cards.Controls.Clear();
             running.Clear();
+            beats.Clear();
             J list;
             string path = EnsureList();
             try { list = new J(Api.Json.DeserializeObject(File.ReadAllText(path))); }
@@ -128,6 +143,12 @@ namespace Cyberdeck
                 string proc = it["process"].Str.Length > 0 ? it["process"].Str : Path.GetFileNameWithoutExtension(exe);
                 running.Add(new KeyValuePair<Label, string[]>(run, new[] { proc }));
                 mid.Controls.Add(run);
+            }
+            if (it.Has("heartbeat"))
+            {
+                var hbl = Ui.L("", Ui.Small, Ui.Dim);
+                beats.Add(new KeyValuePair<Label, J>(hbl, it));
+                mid.Controls.Add(hbl);
             }
             if (it["mcp"].Str.Length > 0)
             {
