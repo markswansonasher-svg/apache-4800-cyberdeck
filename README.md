@@ -28,6 +28,8 @@ Everything needed to set up the PC, the Raspberry Pi 5 and the laptop is here.
 
 The rest of this README explains each part in detail, and how to do every step by hand.
 
+Licence: MIT (see `LICENSE`), except `keybind-mod/`, which is CC0 1.0 (see `keybind-mod/LICENSE`).
+
 ## What's in the kit
 
 ```
