@@ -87,7 +87,8 @@ def status_embed():
         if s.get("idle_left_s") is not None:
             e.add_field(name="Empty server stops in", value=f"{s['idle_left_s'] // 60} min")
     t = k12.get("temps") or {}
-    e.add_field(name="Temps", value=f"PC CPU {fmt_temp(t.get('cpu'))} · Pi {fmt_temp((s.get('pi') or {}).get('temp'))}",
+    pi_t = (s.get("pi") or {}).get("temp")
+    e.add_field(name="Temps", value=f"PC CPU {fmt_temp(t.get('cpu'))}" + (f" · Pi {fmt_temp(pi_t)}" if pi_t is not None else ""),
                 inline=False)
     if act:
         e.add_field(name="Working on", value=f"{act['what']} (by {act['by']})", inline=False)
@@ -202,8 +203,9 @@ async def deck_temps(inter: discord.Interaction):
     t = (s.get("k12") or {}).get("temps") or {}
     lines = [f"**PC CPU** {fmt_temp(t.get('cpu'))}",
              f"**PC GPU** {fmt_temp(t.get('gpu'))}",
-             f"**PC SSD** {fmt_temp(t.get('drive'))}",
-             f"**Pi** {fmt_temp((s.get('pi') or {}).get('temp'))}"]
+             f"**PC SSD** {fmt_temp(t.get('drive'))}"]
+    if (s.get("pi") or {}).get("temp") is not None:          # no Pi (the PC runs the bot): no Pi line
+        lines.append(f"**Pi** {fmt_temp(s['pi']['temp'])}")
     lvl = s.get("temp_level", "ok")
     color = {"ok": COLORS["good"], "warn": COLORS["warn"]}.get(lvl, COLORS["bad"])
     if not (s.get("k12") or {}).get("up"):
@@ -247,7 +249,7 @@ async def wl_list(inter: discord.Interaction):
     await inter.response.defer(ephemeral=True, thinking=True)
     r = await asyncio.to_thread(d.whitelist_list, cfg())
     names = ", ".join(r.get("names") or []) or "nobody yet"
-    extra = "" if r.get("live") else "\n*(PC is off - this is the last list the Pi saw)*"
+    extra = "" if r.get("live") else "\n*(PC is off - this is the last list the deck saw)*"
     if r.get("pending"):
         extra += "\nWaiting for the PC: " + ", ".join(f"{p['action']} {p['name']}" for p in r["pending"])
     await inter.followup.send(f"**Allowed to join:** {names}{extra}", ephemeral=True)
@@ -302,13 +304,13 @@ async def mc_invite(inter: discord.Interaction, friend: discord.Member, minecraf
 
 
 # ------------------------------------------------------------ backup / check / pack
-@mc_group.command(name="backup", description="Back the world up to the Pi now")
+@mc_group.command(name="backup", description="Back the world up now")
 async def mc_backup(inter: discord.Interaction):
     if not is_admin(inter):
         return await deny(inter)
     if d.current_action():
         return await inter.response.send_message("Busy with something else - try again in a minute.", ephemeral=True)
-    await inter.response.send_message("Backing up… I'll post here when it's saved on the Pi.")
+    await inter.response.send_message("Backing up… I'll post here when it's saved.")
     asyncio.create_task(run_action(d.backup_now, cfg(), who(inter)))
 
 
@@ -495,7 +497,7 @@ async def mp_list(inter: discord.Interaction):
         if pr:
             lines.append(f"   ⌨️ keybind preset: {pr['name']} ({len(pr['keys'])} keys)")
     if not r.get("live"):
-        lines.append("*(PC is off - this is the last list the Pi saw)*")
+        lines.append("*(PC is off - this is the last list the deck saw)*")
     e = discord.Embed(title="Modpacks", description="\n".join(lines), color=COLORS["info"])
     if r["active"]:
         meta = (d.read_json("modpacks.json", {}) or {}).get(r["active"])

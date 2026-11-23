@@ -202,7 +202,8 @@ while ($true) {
         @('4', 'The laptop (optional)', $st.laptop),
         @('5', 'Game-dev extras for Claude (optional)', $st.extras),
         @('6', 'Try it first - demo, no hardware', ''),
-        @('7', 'Run the tests', ''))
+        @('7', 'Run the tests', ''),
+        @('8', 'Discord bot on the PC (no Pi needed)', $(if (Test-Path 'C:\deck\bot\config.json') { 'installed' } else { 'optional' })))
     foreach ($r in $rows) {
         $c = if ($r[2] -match '^done|installed') { 'Green' } elseif ($r[2]) { 'DarkGray' } else { 'Gray' }
         Write-Host ("   {0}. {1,-40}" -f $r[0], $r[1]) -NoNewline; Write-Host $r[2] -ForegroundColor $c
@@ -217,6 +218,7 @@ while ($true) {
         '5' { Step-Extras; Pause-Key }
         '6' { Step-Demo; Pause-Key }
         '7' { Step-Tests; Pause-Key }
+        '8' { Run-Ps (Join-Path $Repo 'k12-windows\bot\install-bot.ps1'); Pause-Key }
         'R' { Start-Process (Join-Path $Repo 'README.md') }
         'Q' { return }
     }
