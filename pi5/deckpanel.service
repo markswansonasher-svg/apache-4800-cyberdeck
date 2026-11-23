@@ -1,0 +1,19 @@
+[Unit]
+Description=Deck Panel (web page: Minecraft, temps, Wi-Fi, travel mode)
+After=network-online.target deckwatch.service
+Wants=network-online.target
+
+[Service]
+User=deck
+Group=deck
+WorkingDirectory=/opt/deck
+ExecStart=/usr/bin/python3 /opt/deck/deckpanel.py --serve
+Restart=always
+RestartSec=3
+# ping needs raw sockets; sudo is used only for /usr/local/sbin/deck-net
+AmbientCapabilities=CAP_NET_RAW
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

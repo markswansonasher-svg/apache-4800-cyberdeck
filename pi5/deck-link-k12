@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Link the Pi to the PC's deck-agent (run after setup-k12-agent.cmd on the PC).
+#   sudo deck-link-k12 <windows-user-name>
+# The PC script prints the exact command, including the user name.
+set -euo pipefail
+CFG=/etc/deck/config.json
+KH=/var/lib/deck/.ssh/known_hosts
+[[ $EUID -eq 0 ]] || { echo "Run with sudo."; exit 1; }
+USER_NAME="${1:-}"
+if [[ -z "$USER_NAME" ]]; then
+  echo "Usage: sudo deck-link-k12 <windows-user-name>   (the PC script prints it)"; exit 1
+fi
+if ! [[ "$USER_NAME" =~ ^[A-Za-z0-9._@-]{1,64}$ ]]; then
+  echo "That user name has odd characters: $USER_NAME"; exit 1
+fi
+K12_IP="$(jq -r '.k12_ip // "10.48.0.10"' "$CFG")"
+
+echo "Reading the PC's SSH host key from $K12_IP (it's a cable inside the case, so we trust the first answer)..."
+keys="$(ssh-keyscan -T 5 -t ed25519 "$K12_IP" 2>/dev/null || true)"
+if [[ -z "$keys" ]]; then
+  echo "No answer on port 22. Is the PC on, and did setup-k12-agent.cmd finish?"; exit 1
+fi
+install -d -o deck -g deck -m 700 /var/lib/deck/.ssh
+# replace any old key for that address
+if [[ -f "$KH" ]]; then ssh-keygen -R "$K12_IP" -f "$KH" >/dev/null 2>&1 || true; fi
+echo "$keys" >> "$KH"
+chown deck:deck "$KH"; chmod 600 "$KH"; rm -f "$KH.old"
+
+tmp="$(mktemp)"
+jq --arg u "$USER_NAME" '.k12_user = $u' "$CFG" > "$tmp" && install -m 644 "$tmp" "$CFG" && rm -f "$tmp"
+
+echo "Testing the agent..."
+if out="$(sudo -u deck python3 -c 'import sys; sys.path.insert(0,"/opt/deck"); import decklib as d, json; print(json.dumps(d.agent(d.load_config(),"ping",timeout_s=15)))')" \
+   && echo "$out" | grep -q '"ok": true'; then
+  echo "Linked. The Pi can now start/stop Minecraft on the PC."
+  systemctl restart deckwatch deckpanel
+  systemctl is-enabled --quiet deckbot 2>/dev/null && systemctl restart deckbot || true
+else
+  echo "The agent didn't answer correctly:"; echo "  $out"
+  echo "Check README > Troubleshooting > 'Agent not answering'."; exit 1
+fi

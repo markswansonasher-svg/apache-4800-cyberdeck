@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Set up (or change) the Discord bot.   sudo deck-discord-setup
+# You need, from https://discord.com/developers/applications :
+#   * the bot TOKEN (Bot page > Reset Token)
+#   * the CHANNEL ID for announcements, your SERVER ID and your own USER ID
+#     (Discord settings > Advanced > Developer Mode on, then right-click > Copy ID)
+set -euo pipefail
+[[ $EUID -eq 0 ]] || { echo "Run with sudo."; exit 1; }
+CFG=/etc/deck/config.json
+ENVF=/etc/deck/discord.env
+
+echo "Paste the bot token (it won't show while you type; Enter to keep the current one):"
+read -r -s TOKEN; echo
+if [[ -n "$TOKEN" ]]; then
+  if ! [[ "$TOKEN" =~ ^[A-Za-z0-9._-]{50,100}$ ]]; then echo "That doesn't look like a bot token."; exit 1; fi
+  umask 077
+  printf 'DISCORD_TOKEN=%s\n' "$TOKEN" > "$ENVF"
+  chown root:deck "$ENVF"; chmod 640 "$ENVF"
+fi
+[[ -f "$ENVF" ]] || { echo "No token saved - nothing to do."; exit 1; }
+
+cur_ch="$(jq -r '.discord_channel_id // ""' "$CFG")"
+cur_g="$(jq -r '.discord_guild_id // ""' "$CFG")"
+cur_r="$(jq -r '.discord_admin_role // "deck-admin"' "$CFG")"
+read -r -p "Announcement channel ID [${cur_ch:-none}]: " CH;  CH="${CH:-$cur_ch}"
+read -r -p "Server (guild) ID - makes commands appear instantly [${cur_g:-none}]: " G; G="${G:-$cur_g}"
+read -r -p "Role allowed to start/stop [${cur_r}]: " R; R="${R:-$cur_r}"
+cur_o="$(jq -r '(.discord_owner_ids // []) | join(",")' "$CFG")"
+echo "Your own Discord user ID (right-click your name > Copy User ID). Only this ID can"
+echo "add/remove players, invite friends and pack up. Several people: separate with commas."
+read -r -p "Owner ID(s) [${cur_o:-none}]: " O; O="${O:-$cur_o}"
+O="${O// /}"
+for v in "$CH" "$G"; do
+  [[ -z "$v" || "$v" =~ ^[0-9]{15,22}$ ]] || { echo "IDs are 15-22 digits: $v"; exit 1; }
+done
+for v in ${O//,/ }; do
+  [[ "$v" =~ ^[0-9]{15,22}$ ]] || { echo "IDs are 15-22 digits: $v"; exit 1; }
+done
+[[ -n "$O" ]] || echo "No owner set - nobody can add players from Discord until you run this again."
+tmp="$(mktemp)"
+jq --arg c "$CH" --arg g "$G" --arg r "$R" --arg o "$O" \
+  '.discord_channel_id=$c | .discord_guild_id=$g | .discord_admin_role=$r
+   | .discord_owner_ids=($o | split(",") | map(select(length > 0)))' "$CFG" > "$tmp" \
+  && install -m 644 "$tmp" "$CFG" && rm -f "$tmp"
+
+systemctl enable deckbot >/dev/null
+systemctl restart deckbot
+sleep 6
+if systemctl is-active --quiet deckbot; then
+  echo "Bot running. Try /mc status in your Discord server."
+  echo "Logs: journalctl -u deckbot -n 30"
+else
+  echo "Bot didn't start. Logs:"; journalctl -u deckbot -n 20 --no-pager; exit 1
+fi

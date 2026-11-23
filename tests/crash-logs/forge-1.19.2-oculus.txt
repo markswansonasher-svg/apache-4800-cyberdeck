@@ -1,0 +1,9 @@
+---- Minecraft Crash Report ----
+Description: Mod loading error has occurred
+java.lang.Exception: Mod Loading has failed
+-- MOD oculus --
+Details:
+	Mod File: /data/mods/oculus-mc1.19.2-1.2.8a.jar
+	Failure message: Oculus (oculus) has failed to load correctly
+		java.lang.RuntimeException: Attempted to load class net/minecraft/client/gui/screens/Screen for invalid dist DEDICATED_SERVER
+	Mod Version: 1.2.8a

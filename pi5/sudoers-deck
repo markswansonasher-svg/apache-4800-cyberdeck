@@ -1,0 +1,6 @@
+# The Deck Panel (user "deck") may run exactly one root command: deck-net.
+deck ALL=(root) NOPASSWD: /usr/local/sbin/deck-net
+# The panel asks deck-net for the Wi-Fi status every few seconds; don't log each call
+# (3 journal lines a time would bury real problems and wear the SD card). What deck-net
+# changes (Wi-Fi, travel mode, power off) still shows in the Deck Panel's Events.
+Defaults:deck !syslog, !pam_session

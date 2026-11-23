@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Tailscale API key for /mc invite (makes one-time links that share ONLY the PC).
+#   sudo deck-tailscale-setup
+# Get a key: https://login.tailscale.com/admin/settings/keys > "Generate access token".
+# Access tokens expire (you pick 1-90 days); when invites stop working, run this again.
+set -euo pipefail
+[[ $EUID -eq 0 ]] || { echo "Run with sudo."; exit 1; }
+ENVF=/etc/deck/tailscale.env
+echo "Paste the Tailscale API access token (starts with tskey-api-; hidden while you type),"
+echo "or type 'remove' to delete the saved one:"
+read -r -s KEY; echo
+if [[ "$KEY" == "remove" ]]; then rm -f "$ENVF"; echo "Removed."; systemctl restart deckbot || true; exit 0; fi
+if ! [[ "$KEY" =~ ^tskey-api-[A-Za-z0-9_-]{10,200}$ ]]; then echo "That doesn't look like an API access token (tskey-api-...)."; exit 1; fi
+echo "Testing it..."
+code="$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $KEY" https://api.tailscale.com/api/v2/tailnet/-/devices || true)"
+if [[ "$code" != "200" ]]; then echo "Tailscale said HTTP $code - key not accepted."; exit 1; fi
+umask 077
+printf 'TS_API_KEY=%s\n' "$KEY" > "$ENVF"
+chown root:deck "$ENVF"; chmod 640 "$ENVF"
+systemctl restart deckbot 2>/dev/null || true
+echo "Saved. /mc invite will now include a Tailscale link."

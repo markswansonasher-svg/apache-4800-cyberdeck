@@ -1,0 +1,22 @@
+[Unit]
+Description=Deck watchdog (temperatures, Minecraft players, idle stop)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=deck
+Group=deck
+WorkingDirectory=/opt/deck
+ExecStart=/usr/bin/python3 /opt/deck/deckwatch.py
+Restart=always
+RestartSec=5
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_RAW
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/deck
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

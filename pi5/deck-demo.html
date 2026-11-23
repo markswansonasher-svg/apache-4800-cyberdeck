@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Deck Panel Demo</title>
+<style>
+ :root{--bg:#0b0c0e;--card:#16181c;--line:#2a2d33;--fg:#e8eaed;--dim:#8a8f98;--acc:#4cc9f0;--ok:#3ddc84;--warn:#f2c94c;--bad:#ff5c5c;--dc:#313338;--dc2:#2b2d31}
+ *{box-sizing:border-box}
+ body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px}
+ header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+ h1{font-size:18px;margin:0;letter-spacing:.04em}
+ .tag{background:#3a2f0b;color:var(--warn);font-size:12px;padding:3px 8px;border-radius:6px;font-weight:600}
+ .wrap{display:grid;grid-template-columns:minmax(240px,300px) 392px minmax(260px,1fr);gap:16px;align-items:start}
+ @media (max-width:1000px){.wrap{grid-template-columns:1fr}.phone{margin:0 auto}}
+ .card{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+ h2{font-size:12px;margin:0 0 8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+ .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+ button{padding:9px 8px;font-size:13px;font-weight:600;border:0;border-radius:8px;background:#23262c;color:var(--fg);cursor:pointer;text-align:left}
+ button:hover{background:#2d3138} button.full{grid-column:1/-1;text-align:center}
+ button.red{background:#3b1f22} button.amber{background:#3a3214} button.blue{background:#13303b}
+ .world div{display:flex;justify-content:space-between;font-size:13px;padding:2px 0}
+ .world b{font-weight:600} .on{color:var(--ok)} .off{color:var(--dim)} .hot{color:var(--bad)}
+ #msg{font-size:13px;color:var(--acc);min-height:1.3em;margin-top:8px}
+ .phone{width:392px;height:820px;border:6px solid #2a2d33;border-radius:34px;overflow:hidden;background:#111316}
+ .phone iframe{width:100%;height:100%;border:0}
+ .tips{font-size:13px;color:var(--dim)} .tips li{margin:3px 0}
+ .dc{background:var(--dc);border-radius:12px;overflow:hidden}
+ .dch{background:var(--dc2);padding:10px 14px;font-weight:600;font-size:14px;border-bottom:1px solid #1f2023}
+ .dch span{color:#80848e;font-weight:400}
+ #feed{padding:10px 14px;max-height:760px;overflow:auto}
+ .msg{display:flex;gap:10px;margin:10px 0}
+ .av{width:34px;height:34px;border-radius:50%;background:#5865f2;flex:none;display:grid;place-items:center;font-size:14px;font-weight:700}
+ .who{font-weight:600;font-size:14px} .who small{background:#5865f2;border-radius:3px;font-size:10px;padding:1px 4px;margin-left:5px;vertical-align:1px}
+ .who time{color:#80848e;font-size:12px;font-weight:400;margin-left:6px}
+ .embed{background:var(--dc2);border-left:4px solid #888;border-radius:4px;padding:8px 12px;margin-top:4px;font-size:14px;max-width:440px}
+ .empty{color:#80848e;font-size:14px;padding:8px 0}
+</style></head><body>
+<header><h1>DECK PANEL // DEMO</h1><span class="tag">PRETEND HARDWARE · ~10× SPEED</span>
+<span class="tips">The middle is the real panel. Use it like your phone; use the left to cause trouble.</span></header>
+<div class="wrap">
+ <div>
+  <div class="card"><h2>Pretend world</h2><div class="world" id="world"></div><div id="msg"></div></div>
+  <div class="card"><h2>Players</h2><div class="grid">
+    <button data-a="join">+ Player joins</button><button data-a="leave">− Player leaves</button>
+    <button class="full" data-a="everyone_leaves">Everyone leaves (test idle stop)</button></div></div>
+  <div class="card"><h2>Heat</h2><div class="grid">
+    <button class="amber" data-a="warm">PC warm</button><button class="red" data-a="hot">PC overheating</button>
+    <button class="blue" data-a="cool">PC cool down</button><button class="amber" data-a="pi_hot">Pi hot</button>
+    <button class="blue" data-a="pi_cool">Pi cool down</button><button data-a="lhm_off">Temps app on/off</button></div></div>
+  <div class="card"><h2>Things going wrong</h2><div class="grid">
+    <button data-a="no_wake">Wake-on-LAN on/off</button><button data-a="no_eula">EULA on/off</button>
+    <button class="red" data-a="power_cut">PC power cut</button><button data-a="k12_on">PC on by hand</button></div></div>
+  <div class="card"><h2>Wi-Fi</h2><div class="grid">
+    <button data-a="portal_done">Hotel login done</button><button data-a="wifi_lost">Pi loses Wi-Fi</button>
+    <button class="full" data-a="cable">Pi case cable unplug/plug</button></div>
+    <div class="tips" style="margin-top:6px">In the panel: <i>Choose Wi-Fi network</i> → “Hotel Guest” gives a login page. Locked networks: password <b>password123</b>.</div></div>
+  <div class="card"><h2>Modpacks</h2>
+    <div class="tips">In the panel's <i>Modpacks</i> card, paste one of these (pretend CurseForge):<br>
+    <b>cozy-pack</b> – Fabric, installs fine<br>
+    <b>tech-town</b> – NeoForge, installs fine<br>
+    <b>needs-manual-mods</b> – a mod must be downloaded by hand (Upload any .jar)<br>
+    <b>crashy-pack</b> – crashes twice on mods meant for players' computers; the deck fixes it<br>
+    <b>quilt-garden</b> – Quilt, can't be installed<br>
+    Or any curseforge.com/minecraft/modpacks/… link.<br>
+    <b>Keybind preset:</b> once a pack is installed, press <i>Import from the game…</i> and pick
+    <code>tests\presets\sample-export.json</code> (a pretend export from the keybind mod).</div>
+    <div class="grid" style="margin-top:6px"><button class="full" data-a="manual_done">I put the manual mods in the downloads folder</button></div></div>
+  <div class="card"><div class="grid"><button class="full" data-a="reset">Reset everything</button></div></div>
+ </div>
+ <div class="phone"><iframe src="/" title="Deck Panel"></iframe></div>
+ <div>
+  <div class="dc"><div class="dch"># minecraft-server <span>— what the Discord bot posts</span></div><div id="feed"><div class="empty">Nothing yet. Press Start Minecraft in the panel.</div></div></div>
+  <div class="card" style="margin-top:12px"><h2>Things to try</h2><ol class="tips">
+   <li>Start Minecraft → watch the PC wake, load, and “Minecraft is up”.</li>
+   <li>Add players, then <i>Everyone leaves</i> → it stops by itself after ~1 min and shuts the PC down (the deck woke it).</li>
+   <li><i>PC warm</i> → warning. <i>PC overheating</i> → server saved + stopped, then (still hot) the PC shuts down. Press <i>PC cool down</i> before starting again.</li>
+   <li><i>EULA off</i> or <i>Wake-on-LAN off</i>, then Start → see the error messages.</li>
+   <li>Choose Wi-Fi → Hotel Guest → login warning → Travel mode on → <i>Hotel login done</i>.</li>
+   <li><b>Players allowed:</b> add a name (try <i>NotARealPlayer</i> for the typo check). With the PC off it's queued and applied when the PC starts.</li>
+   <li><b>Pack up</b> with players on → warning, stop, backup, cool-down, PC off → tick the checklist → Shut down the Pi.</li>
+   <li><b>Check the deck</b>, then unplug the case cable and check again. Tick “also wake + test the PC” for the arrival check.</li>
+  </ol></div>
+ </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const COL={good:'#3ddc84',info:'#4cc9f0',warn:'#f2c94c',bad:'#ff5c5c'};
+let lastId=0;
+document.querySelectorAll('button[data-a]').forEach(b=>b.onclick=async()=>{
+  const r=await fetch('/demo/act',{method:'POST',headers:{'X-Deck':'1','Content-Type':'application/json'},body:JSON.stringify({name:b.dataset.a})});
+  $('msg').textContent=(await r.json()).msg; poll();
+});
+function yn(v,a,b){return `<b class="${v?'on':'off'}">${v?a:b}</b>`}
+async function poll(){
+  try{
+    const j=await (await fetch('/demo/feed',{cache:'no-store'})).json(), w=j.world;
+    $('world').innerHTML=
+      `<div>PC power ${yn(w.k12,'on','off')}</div>`+
+      `<div>Minecraft <b class="${w.mc==='up'?'on':'off'}">${esc(w.mc)}</b></div>`+
+      `<div>Players <b>${w.players.length?esc(w.players.join(', ')):'none'}</b></div>`+
+      `<div>Extra heat <b class="${w.heat?'hot':'off'}">+${w.heat} °C</b></div>`+
+      `<div>Temps app ${yn(w.lhm,'running','stopped')}</div>`+
+      `<div>Wake-on-LAN ${yn(w.wakes,'works','broken')}</div>`+
+      `<div>EULA ${yn(w.eula,'accepted','not accepted')}</div>`+
+      `<div>Pi Wi-Fi <b>${esc(w.wifi||'none')}${w.portal?' (login page)':''}</b></div>`+
+      `<div>Travel: Pi / PC ${yn(w.travel,'on','off')} / ${yn(w.k12_travel,'on','off')}</div>`+
+      `<div>Case cable ${yn(w.cable,'plugged in','unplugged')}</div>`+
+      `<div>Whitelist (PC) <b>${esc(w.whitelist.join(', ')||'empty')}</b></div>`+
+      `<div>Backups on the Pi <b>${w.backups}</b></div>`;
+    const evs=j.events.filter(e=>e.id>lastId);
+    if(evs.length){
+      if(!lastId) $('feed').innerHTML='';
+      for(const e of evs){
+        $('feed').insertAdjacentHTML('beforeend',`<div class="msg"><div class="av">D</div><div><div class="who">Deck<small>APP</small><time>${esc(e.t.slice(11,16))}</time></div><div class="embed" style="border-left-color:${COL[e.level]||'#888'}">${esc(e.text)}</div></div></div>`);
+        lastId=e.id;
+      }
+      $('feed').scrollTop=$('feed').scrollHeight;
+    }
+  }catch(e){$('msg').textContent='Demo server not running?'}
+}
+poll(); setInterval(poll,2000);
+</script></body></html>

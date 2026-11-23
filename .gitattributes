@@ -1,0 +1,18 @@
+# Normalise text files; the Pi's files must keep Linux line endings or bash/python fail there.
+* text=auto
+pi5/** text eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.service text eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+keybind-mod/gradlew text eol=lf
+
+# binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.stl binary
+*.3mf binary
+*.zip binary
+*.jar binary

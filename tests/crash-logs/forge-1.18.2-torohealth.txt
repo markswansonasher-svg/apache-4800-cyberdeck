@@ -1,0 +1,6 @@
+-- MOD torohealth --
+Details:
+	Mod File: /data/mods/torohealth-1.18-forge-2.jar
+	Failure message: ToroHealth (torohealth) has failed to load correctly
+	Exception message: java.lang.RuntimeException: Attempted to load class net/minecraft/client/gui/screens/Screen for invalid dist DEDICATED_SERVER
+Description: Mod loading error has occurred

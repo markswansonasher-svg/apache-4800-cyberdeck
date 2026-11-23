@@ -1,0 +1,9 @@
+# Copied to %USERPROFILE%\.wslconfig by install-apps.ps1
+# Caps the WSL2 VM that Docker Desktop runs in, so the Minecraft server
+# can never take the whole PC (UM870 Slim: 16 threads, 32 GB).
+# 20 GB leaves 12 GB for Windows, Discord and the second screen.
+# More RAM in the PC later (64 GB+)? Raise memory here too.
+[wsl2]
+processors=8
+memory=20GB
+swap=4GB

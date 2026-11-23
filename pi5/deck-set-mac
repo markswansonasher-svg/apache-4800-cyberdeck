@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Save the PC's MAC address for wake-k12 and the Deck Panel.
+#   sudo deck-set-mac                 find it automatically (PC must be ON)
+#   sudo deck-set-mac --auto          same, quiet failure (used by setup)
+#   sudo deck-set-mac AA:BB:CC:DD:EE:FF
+set -euo pipefail
+CFG=/etc/deck/config.json
+K12_IP="$(jq -r '.k12_ip // "10.48.0.10"' "$CFG" 2>/dev/null || echo 10.48.0.10)"
+
+if [[ $EUID -ne 0 ]]; then echo "Run with sudo."; exit 1; fi
+
+MAC="${1:-}"
+if [[ -z "$MAC" || "$MAC" == "--auto" ]]; then
+  ping -c 2 -W 1 "$K12_IP" >/dev/null 2>&1 || true
+  MAC="$(ip neigh show "$K12_IP" dev eth0 2>/dev/null | awk '/lladdr/ {print $5}' | head -n1)"
+  if [[ -z "$MAC" ]]; then
+    [[ "${1:-}" == "--auto" ]] && exit 1
+    echo "Couldn't see the PC at $K12_IP. Make sure it's on, the PC setup"
+    echo "script has run, and both are plugged into the case switch."
+    echo "Or type the MAC from the PC script's output:  sudo deck-set-mac AA:BB:CC:DD:EE:FF"
+    exit 1
+  fi
+fi
+
+if ! [[ "$MAC" =~ ^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$ ]]; then
+  echo "That doesn't look like a MAC address: $MAC"; exit 1
+fi
+MAC="$(echo "$MAC" | tr 'A-F-' 'a-f:')"
+
+tmp="$(mktemp)"
+jq --arg m "$MAC" '.k12_mac = $m' "$CFG" > "$tmp" && install -m 644 "$tmp" "$CFG" && rm -f "$tmp"
+echo "PC MAC saved: $MAC"

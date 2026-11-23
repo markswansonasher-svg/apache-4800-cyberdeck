@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Latest readings from the watchdog: PC, temps, Minecraft players.
+exec python3 /opt/deck/deckpanel.py --status

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Wake the PC over the case network. Works from SSH on your phone too.
+exec python3 /opt/deck/deckpanel.py --wake

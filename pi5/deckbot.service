@@ -1,0 +1,23 @@
+[Unit]
+Description=Deck Discord bot
+After=network-online.target deckwatch.service
+Wants=network-online.target
+ConditionPathExists=/etc/deck/discord.env
+
+[Service]
+User=deck
+Group=deck
+WorkingDirectory=/opt/deck
+EnvironmentFile=/etc/deck/discord.env
+ExecStart=/opt/deck/venv/bin/python /opt/deck/deckbot.py
+Restart=always
+RestartSec=15
+EnvironmentFile=-/etc/deck/tailscale.env
+# ping needs raw sockets; sudo is used only for /usr/local/sbin/deck-net
+# (deck check + pack up), so no NoNewPrivileges / read-only system here
+AmbientCapabilities=CAP_NET_RAW
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

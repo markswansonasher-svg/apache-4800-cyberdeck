@@ -1,0 +1,352 @@
+{
+  "_help": [
+    "The Deck app's Dev tools page is made from this list. Edit it (Dev tools > Edit this list), then press Reload.",
+    "groups: each has a name and items. An item can have:",
+    "  name        what to show",
+    "  exe         the program (Open starts it; its version is read from it). %USERPROFILE% etc. work.",
+    "  glob        instead of exe: a path with * - one row for every match (e.g. every Unity editor); several separated by ;",
+    "  appid       instead of exe: a Microsoft Store app's ID (PowerShell: Get-StartApps | Where-Object Name -like '*name*')",
+    "  cli         true = a command-line tool: shows its version, no Open button",
+    "  process     the process name that means it's running (default: the exe's name)",
+    "  mcp         the name of its MCP server in Claude's settings - shows whether Claude has it",
+    "  envkey      Windows user variable(s) that must be set, several separated by ; (shows saved / missing, never the value)",
+    "  note        a short line of help",
+    "  actions     extra buttons: label + run (+ args). ask_folder: true asks for a folder and adds it to args.",
+    "              run can be a program, a script, a folder, a file or a web address."
+  ],
+  "groups": [
+    {
+      "name": "3D, CAD and art",
+      "items": [
+        {
+          "name": "Blender",
+          "exe": "C:\\Program Files\\Blender Foundation\\Blender 5.3\\blender.exe",
+          "mcp": "blender",
+          "note": "BlenderMCP add-on connects by itself when Blender opens. Poly Haven on."
+        },
+        {
+          "name": "OpenSCAD",
+          "exe": "C:\\Program Files\\OpenSCAD\\openscad.exe",
+          "note": "Builds the cyberdeck's printed parts.",
+          "actions": [
+            {
+              "label": "Cyberdeck CAD folder",
+              "run": "D:\\cyberdeck\\cad"
+            }
+          ]
+        },
+        {
+          "name": "Inkscape",
+          "exe": "C:\\Program Files\\Inkscape\\bin\\inkscape.exe"
+        },
+        {
+          "name": "Krita",
+          "exe": "C:\\Program Files\\Krita (x64)\\bin\\krita.exe"
+        },
+        {
+          "name": "ImageMagick",
+          "exe": "C:\\Program Files\\ImageMagick-7.1.2-Q16-HDRI\\magick.exe",
+          "cli": true,
+          "note": "magick - resize, convert and batch images."
+        },
+        {
+          "name": "Canva",
+          "exe": "%LOCALAPPDATA%\\Programs\\Canva\\Canva.exe",
+          "note": "Store pages, thumbnails, posts. Claude's Canva connector: sign in once with /mcp in Claude.",
+          "actions": [
+            {
+              "label": "Canva in browser",
+              "run": "https://www.canva.com"
+            }
+          ]
+        },
+        {
+          "name": "Figma",
+          "exe": "%LOCALAPPDATA%\\Figma\\Figma.exe",
+          "note": "UI and menu design. Claude's Figma connector is available.",
+          "actions": [
+            {
+              "label": "Figma in browser",
+              "run": "https://www.figma.com/files"
+            }
+          ]
+        },
+        {
+          "name": "ffmpeg",
+          "glob": "%LOCALAPPDATA%\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-*\\bin\\ffmpeg.exe",
+          "cli": true,
+          "note": "Video and audio: cut clips, make GIFs, convert trailers."
+        }
+      ]
+    },
+    {
+      "name": "Game development",
+      "items": [
+        {
+          "name": "Unity Hub",
+          "appid": "UnityTechnologies.UnityHub_2vrhnee42bhxm!UnityHub",
+          "process": "Unity Hub",
+          "note": "Microsoft Store version."
+        },
+        {
+          "name": "Unity",
+          "glob": "C:\\Program Files\\Unity\\Hub\\Editor\\*\\Editor\\Unity.exe; D:\\Unity\\Hub\\Editor\\*\\Editor\\Unity.exe; C:\\Unity\\Hub\\Editor\\*\\Editor\\Unity.exe",
+          "process": "Unity",
+          "mcp": "UnityMCP",
+          "note": "Each project needs the MCP for Unity package - use the buttons below."
+        },
+        {
+          "name": "MCP for Unity setup",
+          "note": "Adds Coplay's package to Unity projects (one line in Packages\\manifest.json, backup kept).",
+          "actions": [
+            {
+              "label": "Pick from my projects",
+              "run": "%USERPROFILE%\\mcp-servers\\unity\\add-unity-mcp.cmd"
+            },
+            {
+              "label": "Choose a project folder...",
+              "run": "%USERPROFILE%\\mcp-servers\\unity\\add-unity-mcp.cmd",
+              "ask_folder": true
+            },
+            {
+              "label": "Coplay docs",
+              "run": "https://coplaydev.github.io/unity-mcp/"
+            }
+          ]
+        },
+        {
+          "name": "Godot",
+          "exe": "%LOCALAPPDATA%\\Programs\\Godot\\Godot_v4.7.2-stable_win64.exe",
+          "process": "Godot_v4.7.2-stable_win64",
+          "mcp": "godot",
+          "note": "Portable. The Godot MCP runs projects and reads their errors - no add-on needed in projects.",
+          "actions": [
+            {
+              "label": "Godot MCP folder",
+              "run": "%USERPROFILE%\\mcp-servers\\godot-mcp"
+            },
+            {
+              "label": "Godot docs",
+              "run": "https://docs.godotengine.org"
+            }
+          ]
+        },
+        {
+          "name": "itch.io",
+          "glob": "%LOCALAPPDATA%\\itch\\app-*\\itch.exe",
+          "process": "itch",
+          "note": "Where indie games get published. Its upload tool (butler) can be added when a game is near release.",
+          "actions": [
+            {
+              "label": "Dashboard",
+              "run": "https://itch.io/dashboard"
+            }
+          ]
+        },
+        {
+          "name": "Steam",
+          "exe": "C:\\Program Files (x86)\\Steam\\steam.exe"
+        }
+      ]
+    },
+    {
+      "name": "Code and tools",
+      "items": [
+        {
+          "name": "GitHub Desktop",
+          "exe": "%LOCALAPPDATA%\\GitHubDesktop\\GitHubDesktop.exe"
+        },
+        {
+          "name": "Git",
+          "exe": "C:\\Program Files\\Git\\cmd\\git.exe",
+          "cli": true
+        },
+        {
+          "name": "GitHub CLI",
+          "exe": "C:\\Program Files\\GitHub CLI\\gh.exe",
+          "cli": true,
+          "note": "Sign in once: gh auth login",
+          "actions": [
+            {
+              "label": "Sign in...",
+              "run": "powershell.exe",
+              "args": "-NoExit -Command gh auth login"
+            }
+          ]
+        },
+        {
+          "name": "Node.js",
+          "exe": "C:\\Program Files\\nodejs\\node.exe",
+          "cli": true
+        },
+        {
+          "name": "Python 3.12",
+          "exe": "%LOCALAPPDATA%\\Programs\\Python\\Python312\\python.exe",
+          "cli": true
+        },
+        {
+          "name": "uv",
+          "exe": "%LOCALAPPDATA%\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\\uv.exe",
+          "cli": true,
+          "note": "Runs the Blender, Gemini and Unity MCP servers."
+        },
+        {
+          "name": "Docker Desktop",
+          "exe": "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe",
+          "process": "Docker Desktop",
+          "note": "Runs the Minecraft server."
+        }
+      ]
+    },
+    {
+      "name": "AI",
+      "items": [
+        {
+          "name": "Gemini",
+          "mcp": "gemini",
+          "envkey": "GEMINI_API_KEY",
+          "note": "Questions, files, YouTube. Images need billing on at AI Studio.",
+          "actions": [
+            {
+              "label": "Change API key...",
+              "run": "powershell.exe",
+              "args": "-NoExit -ExecutionPolicy Bypass -File \"%USERPROFILE%\\mcp-servers\\gemini\\set-gemini-key.ps1\""
+            },
+            {
+              "label": "AI Studio",
+              "run": "https://aistudio.google.com"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Free assets",
+      "items": [
+        {
+          "name": "Asset library",
+          "mcp": "assets",
+          "note": "Ask Claude for models, textures, skies, sounds or Godot plugins. Only CC0 / CC-BY; credits go in each project's ASSET_CREDITS.md.",
+          "actions": [
+            {
+              "label": "Open library",
+              "run": "C:\\Assets"
+            },
+            {
+              "label": "Set site keys...",
+              "run": "powershell.exe",
+              "args": "-NoExit -ExecutionPolicy Bypass -File \"%USERPROFILE%\\mcp-servers\\assets\\set-asset-keys.ps1\""
+            }
+          ],
+          "envkey": "FREESOUND_API_KEY;POLYPIZZA_API_KEY;SKETCHFAB_API_TOKEN"
+        },
+        {
+          "name": "Free sites (Claude downloads)",
+          "note": "Claude searches these directly. Freesound, Poly Pizza and Sketchfab downloads need a free key.",
+          "actions": [
+            {
+              "label": "Kenney",
+              "run": "https://kenney.nl/assets"
+            },
+            {
+              "label": "Poly Haven",
+              "run": "https://polyhaven.com"
+            },
+            {
+              "label": "ambientCG",
+              "run": "https://ambientcg.com"
+            },
+            {
+              "label": "Sketchfab",
+              "run": "https://sketchfab.com/search?features=downloadable&type=models"
+            },
+            {
+              "label": "Poly Pizza",
+              "run": "https://poly.pizza"
+            },
+            {
+              "label": "Freesound",
+              "run": "https://freesound.org"
+            },
+            {
+              "label": "Godot assets",
+              "run": "https://godotengine.org/asset-library/asset"
+            }
+          ]
+        },
+        {
+          "name": "Sign-in sites (download, then Claude files it)",
+          "note": "Download in the browser, then ask Claude to add the file to the library with its licence.",
+          "actions": [
+            {
+              "label": "Quaternius",
+              "run": "https://quaternius.com"
+            },
+            {
+              "label": "Mixamo",
+              "run": "https://www.mixamo.com"
+            },
+            {
+              "label": "itch.io free assets",
+              "run": "https://itch.io/game-assets/free/tag-cc0"
+            },
+            {
+              "label": "Unity Asset Store",
+              "run": "https://assetstore.unity.com/?free=true"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Notes and settings",
+      "items": [
+        {
+          "name": "Software list",
+          "note": "How Claude uses each tool (installed by the game-dev extras).",
+          "actions": [
+            {
+              "label": "Open",
+              "run": "%USERPROFILE%\\mcp-servers\\README.md"
+            }
+          ]
+        },
+        {
+          "name": "MCP servers folder",
+          "note": "Claude's own MCP servers: Gemini, Godot, the asset library, and the Unity setup script.",
+          "actions": [
+            {
+              "label": "Open",
+              "run": "%USERPROFILE%\\mcp-servers"
+            }
+          ]
+        },
+        {
+          "name": "Cyberdeck kit",
+          "note": "The deck's PC side (agent, app, server, backups) is in C:\\deck; the setup files in C:\\deck\\setup-kit.",
+          "actions": [
+            {
+              "label": "Open C:\\deck",
+              "run": "C:\\deck"
+            },
+            {
+              "label": "Setup kit",
+              "run": "C:\\deck\\setup-kit"
+            }
+          ]
+        },
+        {
+          "name": "PC speed-ups",
+          "note": "Run after making new Unity/Godot projects so Defender skips their build folders (asks for admin).",
+          "actions": [
+            {
+              "label": "Run speed-ups",
+              "run": "powershell.exe",
+              "args": "-NoProfile -ExecutionPolicy Bypass -File \"C:\\deck\\tools\\speed-up-pc.ps1\""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+# Made per deck by the setup scripts - personal, never commit
+k12-info.txt
+pi5/deck-pi.pub
+.env
+**/game-servers/data/
+secrets/
+*.log
+setup-progress.json
+
+# Built
+k12-windows/app/Deck.exe
+*.exe
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Keybind mod (Gradle)
+keybind-mod/.gradle/
+keybind-mod/**/build/
+keybind-mod/run/
+keybind-mod/.idea/
+keybind-mod/**/bin/
+keybind-mod/**/out/
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+.DS_Store

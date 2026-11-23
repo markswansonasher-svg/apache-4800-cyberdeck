@@ -1,0 +1,67 @@
+# Minecraft server for the cyberdeck PC.
+# Settings live in .env next to this file (made from env.example). When a
+# modpack is active, its file in packs\ is layered on top (deck-compose.ps1
+# merges them into .env.active). Start: start-minecraft.cmd  Stop: stop-minecraft.cmd
+services:
+  minecraft:
+    # java8 / java17 / java21 / latest - the deck picks it from the pack's Minecraft version
+    image: itzg/minecraft-server:${MC_IMAGE_TAG:-latest}
+    container_name: minecraft
+    restart: unless-stopped
+    # the server announces the stop, waits 10 s, then saves - give it time
+    stop_grace_period: 2m
+    tty: true
+    stdin_open: true
+    ports:
+      - "25565:25565"
+    environment:
+      EULA: "${MC_EULA:-FALSE}"
+      TYPE: "${MC_TYPE:-VANILLA}"
+      VERSION: "${MC_VERSION:-LATEST}"
+      MEMORY: "${MC_MEMORY:-6G}"
+      # Aikar's well-known Java tuning: smoother garbage collection, fewer lag spikes
+      USE_AIKAR_FLAGS: "${MC_AIKAR_FLAGS:-true}"
+      MOTD: "${MC_MOTD:-Apache 4800 deck}"
+      DIFFICULTY: "${MC_DIFFICULTY:-normal}"
+      MAX_PLAYERS: "${MC_MAX_PLAYERS:-10}"
+      ONLINE_MODE: "TRUE"
+      ENABLE_WHITELIST: "${MC_WHITELIST:-TRUE}"
+      WHITELIST: "${MC_WHITELIST_PLAYERS:-}"
+      OPS: "${MC_OPS:-}"
+      TZ: "${TZ:-America/New_York}"
+      # Saves are flushed before backups and on stop
+      STOP_SERVER_ANNOUNCE_DELAY: "10"
+      # CurseForge modpacks (TYPE=AUTO_CURSEFORGE). Empty for vanilla.
+      CF_API_KEY_FILE: "${CF_API_KEY_FILE:-}"
+      CF_SLUG: "${CF_SLUG:-}"
+      CF_FILE_ID: "${CF_FILE_ID:-}"
+      # an imported CurseForge "Export profile" zip (Deck app > Modpacks > Import), instead of CF_SLUG
+      CF_MODPACK_ZIP: "${CF_MODPACK_ZIP:-}"
+      CF_EXCLUDE_MODS: "${CF_EXCLUDE_MODS:-}"
+      CF_FORCE_INCLUDE_MODS: "${CF_FORCE_INCLUDE_MODS:-}"
+      # set for one start after the deck leaves a mod out, so the server really removes it
+      CF_FORCE_SYNCHRONIZE: "${CF_FORCE_SYNCHRONIZE:-false}"
+    volumes:
+      # vanilla: data\minecraft   modpack: data\packs\<name>  (each pack keeps its own world)
+      - ${MC_DATA_DIR:-./data/minecraft}:/data
+      # mods you downloaded by hand for the active pack
+      - ${CF_DOWNLOADS_DIR:-./downloads/vanilla}:/downloads
+      # CurseForge export zips copied here by the Deck app (read-only for the server)
+      - ./imports:/imports:ro
+    secrets:
+      - cf_api_key
+    # Keeps the second screen smooth: at most 6 threads; memory per pack (vanilla 8 GB)
+    cpus: 6
+    mem_limit: ${MC_MEM_LIMIT:-8g}
+    healthcheck:
+      test: ["CMD", "mc-health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 3m
+
+secrets:
+  # CurseForge API key, kept OFF the USB drive (setup-curseforge.cmd writes it).
+  # A file avoids the "$ in the key" problem that env files have.
+  cf_api_key:
+    file: C:/deck/secrets/cf_api_key.secret

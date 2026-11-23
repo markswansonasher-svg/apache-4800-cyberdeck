@@ -1,0 +1,431 @@
+#!/usr/bin/env python3
+"""
+deck-net - the only thing the Deck Panel is allowed to run as root (via sudo).
+
+  deck-net status              Wi-Fi, internet / captive portal, travel mode
+  deck-net scan                nearby Wi-Fi networks
+  deck-net connect             JSON on stdin: {"ssid": "...", "password": "..."}
+  deck-net forget              JSON on stdin: {"ssid": "..."}
+  deck-net travel on|off       share the Pi's Wi-Fi with the case network
+  deck-net restore             re-apply travel mode at boot (deck-net-restore.service)
+  deck-net poweroff            shut the Pi down cleanly in ~4 s (last step of Pack up)
+  deck-net reboot              restart the Pi in ~4 s
+  deck-net config-get          the deck settings the Deck app may change, with their limits
+  deck-net config-set          JSON on stdin: {"changes": {"idle_stop_minutes": 30, ...}}
+                               (only the settings in CONFIG_FIELDS, each checked)
+
+Travel mode = the Pi forwards + NATs traffic from 10.48.0.0/24 out of whatever
+it's connected to (Wi-Fi, or Tailscale exit node). DNS for the case network is
+answered by dnsmasq on 10.48.0.2, which forwards to the Wi-Fi's own DNS - so
+hotel / school login pages still work.
+
+Prints one line of JSON.
+"""
+import http.client
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+
+CASE_NET = "10.48.0.0/24"
+CASE_IF = "eth0"
+WIFI_IF = "wlan0"
+STATE = "/var/lib/deck/travel"
+TAG = "deck-travel"
+CONFIG = "/etc/deck/config.json"
+
+# The deck settings the Deck app may change. Everything else in config.json (Discord IDs,
+# allowed networks, the PC's MAC...) stays as the setup commands left it.
+# default = the same value as decklib.DEFAULT_CONFIG (tests check they match).
+CONFIG_FIELDS = [
+    {"key": "idle_stop_minutes", "type": "int", "min": 0, "max": 1440, "default": 20, "group": "Minecraft",
+     "label": "Stop an empty server after (minutes)", "help": "0 = never stop it"},
+    {"key": "mc_join_address", "type": "text", "default": "", "group": "Minecraft",
+     "label": "Join address shown to players", "help": "Empty = the PC's Tailscale address"},
+    {"key": "modpack_mem_gb", "type": "int", "min": 4, "max": 26, "default": 10, "group": "Minecraft",
+     "label": "Modpack memory (GB)", "help": "Used the next time a pack is installed or switched to"},
+    {"key": "wake_timeout_s", "type": "int", "min": 60, "max": 900, "default": 300, "group": "Minecraft",
+     "label": "Wait for the PC to wake (seconds)"},
+    {"key": "k12_cpu_warn", "type": "int", "min": 60, "max": 100, "default": 85, "group": "Temperatures",
+     "label": "PC CPU: warn at (°C)"},
+    {"key": "k12_cpu_hot", "type": "int", "min": 65, "max": 105, "default": 92, "group": "Temperatures",
+     "label": "PC CPU: stop Minecraft at (°C)", "help": "Must be above the warning level"},
+    {"key": "pi_warn", "type": "int", "min": 50, "max": 85, "default": 75, "group": "Temperatures",
+     "label": "Pi: warn at (°C)"},
+    {"key": "pi_hot", "type": "int", "min": 55, "max": 90, "default": 82, "group": "Temperatures",
+     "label": "Pi: too hot at (°C)", "help": "Must be above the warning level"},
+    {"key": "backup_keep", "type": "int", "min": 1, "max": 100, "default": 10, "group": "Backups",
+     "label": "Backups to keep per world"},
+    {"key": "backup_on_stop_hours", "type": "int", "min": 0, "max": 168, "default": 1, "group": "Backups",
+     "label": "Back up on stop if the last backup is older than (hours)", "help": "0 = every stop"},
+    {"key": "pack_warn_s", "type": "int", "min": 0, "max": 600, "default": 60, "group": "Pack up",
+     "label": "Warn players before stopping (seconds)"},
+    {"key": "pack_cool_c", "type": "int", "min": 30, "max": 90, "default": 55, "group": "Pack up",
+     "label": "Wait until the PC CPU is below (°C)"},
+]
+# host or host:port - what players type in Minecraft
+JOIN_RE = re.compile(r"^[A-Za-z0-9.-]{1,253}(:\d{1,5})?$")
+
+
+def out(obj, code=0):
+    print(json.dumps(obj))
+    sys.exit(code)
+
+
+def run(cmd, check=False, timeout=60, **kw):
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, **kw)
+    if check and r.returncode != 0:
+        raise RuntimeError((r.stderr or r.stdout).strip()[-300:] or f"{cmd[0]} failed")
+    return r
+
+
+def split_terse(line):
+    """nmcli -t output: ':' separates fields, '\\:' is a literal colon."""
+    fields, cur, esc = [], "", False
+    for ch in line:
+        if esc:
+            cur += ch
+            esc = False
+        elif ch == "\\":
+            esc = True
+        elif ch == ":":
+            fields.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    fields.append(cur)
+    return fields
+
+
+# ------------------------------------------------------------ Wi-Fi ---------
+
+def saved_wifi():
+    names = []
+    for line in run(["nmcli", "-t", "-f", "NAME,TYPE", "connection", "show"]).stdout.splitlines():
+        f = split_terse(line)
+        if len(f) >= 2 and f[1] == "802-11-wireless":
+            names.append(f[0])
+    return names
+
+
+def radio_is_on():
+    return run(["nmcli", "radio", "wifi"]).stdout.strip() == "enabled"
+
+
+def wifi_radio_on():
+    """A fresh Raspberry Pi OS can start with NetworkManager's Wi-Fi radio switched off
+    (wlan0 'unavailable'): scans then find nothing and connecting fails. Switch it on."""
+    if radio_is_on():
+        return
+    run(["nmcli", "radio", "wifi", "on"])
+    for _ in range(15):     # wait for wlan0 to leave 'unavailable' (a few seconds)
+        st = {split_terse(x)[0]: split_terse(x)[-1] for x in
+              run(["nmcli", "-t", "-f", "DEVICE,STATE", "device", "status"]).stdout.splitlines() if x}
+        if st.get(WIFI_IF, "") != "unavailable":
+            break
+        time.sleep(1)
+    time.sleep(2)           # first scan results
+
+
+def scan():
+    wifi_radio_on()
+    r = run(["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list",
+             "ifname", WIFI_IF, "--rescan", "yes"], timeout=40)
+    saved = set(saved_wifi())
+    best = {}
+    for line in r.stdout.splitlines():
+        f = split_terse(line)
+        if len(f) < 4 or not f[1]:
+            continue
+        ssid, sig = f[1], int(f[2] or 0)
+        cur = best.get(ssid)
+        if cur is None or sig > cur["signal"] or f[0] == "*":
+            best[ssid] = {"ssid": ssid, "signal": sig, "security": f[3] or "open",
+                          "in_use": f[0] == "*" or (cur or {}).get("in_use", False),
+                          "saved": ssid in saved}
+    nets = sorted(best.values(), key=lambda n: (not n["in_use"], -n["signal"]))
+    out({"ok": True, "networks": nets[:30]})
+
+
+def valid_ssid(ssid):
+    return isinstance(ssid, str) and 0 < len(ssid.encode()) <= 32 and not re.search(r"[\x00-\x1f]", ssid)
+
+
+def connect():
+    try:
+        req = json.loads(sys.stdin.read() or "{}")
+    except ValueError:
+        out({"ok": False, "error": "bad request"}, 1)
+    ssid, pw = req.get("ssid"), req.get("password") or ""
+    if not valid_ssid(ssid):
+        out({"ok": False, "error": "bad network name"}, 1)
+    if pw and not (8 <= len(pw) <= 63) or re.search(r"[\x00-\x1f]", pw):
+        out({"ok": False, "error": "Wi-Fi passwords are 8-63 characters"}, 1)
+    wifi_radio_on()
+    if ssid in saved_wifi():
+        if not pw:
+            r = run(["nmcli", "-w", "40", "connection", "up", "id", ssid], timeout=50)
+            if r.returncode == 0:
+                out({"ok": True, "msg": f"Connected to {ssid}"})
+            out({"ok": False, "error": (r.stderr or r.stdout).strip()[-200:]}, 1)
+        run(["nmcli", "connection", "delete", "id", ssid])   # new password: start fresh
+    cmd = ["nmcli", "-w", "40", "device", "wifi", "connect", ssid, "ifname", WIFI_IF]
+    if pw:
+        cmd += ["password", pw]
+    r = run(cmd, timeout=50)
+    if r.returncode == 0:
+        out({"ok": True, "msg": f"Connected to {ssid}"})
+    msg = (r.stderr or r.stdout).strip()
+    if "Secrets were required" in msg or "802-11-wireless-security" in msg:
+        msg = "Wrong password (or this network needs a username - school/enterprise Wi-Fi isn't supported here)."
+    out({"ok": False, "error": msg[-200:]}, 1)
+
+
+def forget():
+    try:
+        ssid = json.loads(sys.stdin.read() or "{}").get("ssid")
+    except ValueError:
+        ssid = None
+    if not valid_ssid(ssid) or ssid not in saved_wifi():
+        out({"ok": False, "error": "not a saved Wi-Fi network"}, 1)
+    r = run(["nmcli", "connection", "delete", "id", ssid])
+    out({"ok": r.returncode == 0, "msg": f"Forgot {ssid}", "error": r.stderr.strip()})
+
+
+def internet_check():
+    """'online' | 'portal' (+url) | 'offline'. Same check Android phones use."""
+    try:
+        c = http.client.HTTPConnection("connectivitycheck.gstatic.com", 80, timeout=5)
+        c.request("GET", "/generate_204", headers={"User-Agent": "Mozilla/5.0 deck"})
+        r = c.getresponse()
+        loc = r.getheader("Location") or ""
+        r.read(2048)
+        c.close()
+        if r.status == 204:
+            return {"internet": "online"}
+        url = loc if loc.startswith(("http://", "https://")) else "http://connectivitycheck.gstatic.com/generate_204"
+        return {"internet": "portal", "portal_url": url}
+    except Exception:
+        return {"internet": "offline"}
+
+
+def status():
+    wifi = {"ssid": None, "signal": None, "ip": None}
+    for line in run(["nmcli", "-t", "-f", "ACTIVE,SSID,SIGNAL", "device", "wifi", "list",
+                     "ifname", WIFI_IF, "--rescan", "no"]).stdout.splitlines():
+        f = split_terse(line)
+        if len(f) >= 3 and f[0] == "yes":
+            wifi["ssid"], wifi["signal"] = f[1], int(f[2] or 0)
+            break
+    m = re.search(r"inet (\S+)/", run(["ip", "-4", "-o", "addr", "show", WIFI_IF]).stdout)
+    wifi["ip"] = m.group(1) if m else None
+    res = {"ok": True, "wifi": wifi, "wifi_radio": radio_is_on(), "travel": travel_is_on(), **internet_check()}
+    out(res)
+
+
+# ------------------------------------------------------------ travel mode ---
+
+def ipt(*args, table=None, check=False):
+    cmd = ["iptables", "-w"] + (["-t", table] if table else []) + list(args)
+    return run(cmd, check=check)
+
+
+def chain_exists(chain, table="filter"):
+    return ipt("-S", chain, table=table).returncode == 0
+
+
+def rules_with_tag(chain, table):
+    r = ipt("-S", chain, table=table)
+    return [l for l in r.stdout.splitlines() if TAG in l and l.startswith("-A ")]
+
+
+def remove_rules():
+    for table, chain in (("filter", "DOCKER-USER"), ("filter", "FORWARD"), ("nat", "POSTROUTING")):
+        if not chain_exists(chain, table):
+            continue
+        for rule in rules_with_tag(chain, table):
+            # "-A CHAIN ..." -> "-D CHAIN ..."
+            args = split_rule(rule)
+            args[0] = "-D"
+            ipt(*args, table=table)
+
+
+def split_rule(rule):
+    import shlex
+    return shlex.split(rule)
+
+
+def travel_is_on():
+    try:
+        with open(STATE) as f:
+            return f.read().strip() == "on"
+    except FileNotFoundError:
+        return False
+
+
+def apply_travel(on):
+    remove_rules()
+    if on:
+        with open("/proc/sys/net/ipv4/ip_forward", "w") as f:
+            f.write("1\n")
+        # Docker sets the FORWARD policy to DROP; its DOCKER-USER chain is checked first.
+        chain = "DOCKER-USER" if chain_exists("DOCKER-USER") else "FORWARD"
+        c = ["-m", "comment", "--comment", TAG, "-j", "ACCEPT"]
+        ipt("-I", chain, "1", "-i", CASE_IF, "-s", CASE_NET, "!", "-o", CASE_IF, *c, check=True)
+        ipt("-I", chain, "1", "-o", CASE_IF, "-d", CASE_NET, "-m", "conntrack",
+            "--ctstate", "RELATED,ESTABLISHED", *c, check=True)
+        ipt("-A", "POSTROUTING", "-s", CASE_NET, "!", "-o", CASE_IF, "-m", "comment",
+            "--comment", TAG, "-j", "MASQUERADE", table="nat", check=True)
+    else:
+        # Docker needs forwarding for its own containers, so leave ip_forward as it is.
+        pass
+
+
+def travel(arg):
+    if arg not in ("on", "off"):
+        out({"ok": False, "error": "use: travel on|off"}, 1)
+    try:
+        apply_travel(arg == "on")
+    except Exception as e:
+        out({"ok": False, "error": str(e)}, 1)
+    os.makedirs(os.path.dirname(STATE), exist_ok=True)
+    with open(STATE, "w") as f:
+        f.write(arg + "\n")
+    out({"ok": True, "travel": arg == "on"})
+
+
+def restore():
+    try:
+        apply_travel(travel_is_on())
+        out({"ok": True, "travel": travel_is_on()})
+    except Exception as e:
+        out({"ok": False, "error": str(e)}, 1)
+
+
+def poweroff():
+    """Clean Pi shutdown a few seconds from now (so the web page gets its answer first)."""
+    r = run(["systemd-run", "--on-active=4", "--timer-property=AccuracySec=1s",
+             "/bin/systemctl", "poweroff"])
+    if r.returncode != 0:
+        out({"ok": False, "error": (r.stderr or r.stdout).strip()[-200:]}, 1)
+    out({"ok": True, "msg": "Pi shutting down in a few seconds."})
+
+
+def reboot():
+    """Clean Pi restart a few seconds from now."""
+    r = run(["systemd-run", "--on-active=4", "--timer-property=AccuracySec=1s",
+             "/bin/systemctl", "reboot"])
+    if r.returncode != 0:
+        out({"ok": False, "error": (r.stderr or r.stdout).strip()[-200:]}, 1)
+    out({"ok": True, "msg": "Pi restarting in a few seconds."})
+
+
+# ------------------------------------------------------------ deck settings --
+
+def config_view(cfg):
+    """The editable settings: their current values and limits."""
+    values = {f["key"]: cfg.get(f["key"], f["default"]) for f in CONFIG_FIELDS}
+    return {"ok": True, "values": values, "fields": CONFIG_FIELDS}
+
+
+def config_apply(cfg, changes):
+    """Check the changes and return the new whole config. Raises ValueError (for people)."""
+    if not isinstance(changes, dict) or not changes:
+        raise ValueError("nothing to change")
+    fields = {f["key"]: f for f in CONFIG_FIELDS}
+    new = dict(cfg)
+    for key, val in changes.items():
+        f = fields.get(key)
+        if f is None:
+            raise ValueError(f"'{key}' can't be changed from the app")
+        if f["type"] == "int":
+            if isinstance(val, bool) or not isinstance(val, (int, float, str)):
+                raise ValueError(f"{f['label']}: a whole number, please")
+            try:
+                n = int(str(val).strip())
+            except ValueError:
+                raise ValueError(f"{f['label']}: a whole number, please")
+            if not f["min"] <= n <= f["max"]:
+                raise ValueError(f"{f['label']}: between {f['min']} and {f['max']}")
+            new[key] = n
+        else:
+            s = str(val if val is not None else "").strip()
+            if s and not JOIN_RE.match(s):
+                raise ValueError(f"{f['label']}: an address like 100.64.1.2 or play.example.com:25565")
+            new[key] = s
+    for warn, hot in (("k12_cpu_warn", "k12_cpu_hot"), ("pi_warn", "pi_hot")):
+        w = new.get(warn, fields[warn]["default"])
+        h = new.get(hot, fields[hot]["default"])
+        if h <= w:
+            raise ValueError(f"{fields[hot]['label']} must be above {fields[warn]['label'].lower()}")
+    return new
+
+
+def read_config():
+    try:
+        with open(CONFIG, encoding="utf-8") as f:
+            cfg = json.load(f)
+        return cfg if isinstance(cfg, dict) else {}
+    except FileNotFoundError:
+        return {}
+
+
+def config_get():
+    out(config_view(read_config()))
+
+
+def config_set():
+    try:
+        req = json.loads(sys.stdin.read() or "{}")
+    except ValueError:
+        out({"ok": False, "error": "bad request"}, 1)
+    try:
+        new = config_apply(read_config(), (req or {}).get("changes"))
+    except ValueError as e:
+        out({"ok": False, "error": str(e)}, 1)
+    tmp = CONFIG + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(new, f, indent=2)
+        f.write("\n")
+    os.chmod(tmp, 0o644)          # the services read it as the deck user
+    os.replace(tmp, CONFIG)
+    out(dict(config_view(new), msg="Saved. The deck uses the new settings right away."))
+
+
+def main(argv):
+    if os.geteuid() != 0:
+        out({"ok": False, "error": "deck-net must run as root (sudo)"}, 1)
+    if not argv:
+        out({"ok": False, "error": "usage: deck-net status|scan|connect|forget|travel on|off|restore|poweroff|reboot|config-get|config-set"}, 1)
+    cmd = argv[0]
+    try:
+        if cmd == "status":
+            status()
+        elif cmd == "scan":
+            scan()
+        elif cmd == "connect":
+            connect()
+        elif cmd == "forget":
+            forget()
+        elif cmd == "travel" and len(argv) == 2:
+            travel(argv[1])
+        elif cmd == "restore":
+            restore()
+        elif cmd == "poweroff":
+            poweroff()
+        elif cmd == "reboot":
+            reboot()
+        elif cmd == "config-get":
+            config_get()
+        elif cmd == "config-set":
+            config_set()
+        else:
+            out({"ok": False, "error": "unknown command"}, 1)
+    except subprocess.TimeoutExpired:
+        out({"ok": False, "error": "timed out"}, 1)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

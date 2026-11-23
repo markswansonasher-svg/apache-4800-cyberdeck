@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#111316"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Deck">
+<link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<title>Deck Panel</title>
+<style>
+ :root{--bg:#111316;--card:#1c1e23;--line:#2a2d33;--fg:#e8eaed;--dim:#8a8f98;--ok:#3ddc84;--warn:#f2c94c;--bad:#ff5c5c;--acc:#4cc9f0}
+ *{box-sizing:border-box}
+ body{margin:0 auto;max-width:640px;background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px}
+ h1{font-size:20px;margin:0 0 2px;letter-spacing:.04em}
+ h2{font-size:13px;margin:0 0 8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+ .sub{color:var(--dim);font-size:13px;margin-bottom:14px}
+ .card{background:var(--card);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+ .row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0}
+ .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;background:var(--dim);flex:none}
+ .ok .dot{background:var(--ok)} .bad .dot{background:var(--bad)} .warn .dot{background:var(--warn)}
+ .dim{color:var(--dim);font-size:14px}
+ .big{font-size:22px;font-weight:700}
+ .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+ button{padding:13px;font-size:16px;font-weight:600;border:0;border-radius:10px;background:var(--acc);color:#000;cursor:pointer}
+ button.sec{background:var(--line);color:var(--fg)} button.danger{background:#5a2a2a;color:#ffd6d6}
+ button.wide{grid-column:1/-1;font-size:18px;padding:16px}
+ button:disabled{opacity:.45;cursor:default}
+ .temps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
+ .temps div{background:var(--bg);border-radius:8px;padding:8px 4px}
+ .temps b{display:block;font-size:19px} .temps span{font-size:12px;color:var(--dim)}
+ .t-warn b{color:var(--warn)} .t-bad b{color:var(--bad)}
+ svg{width:100%;height:90px;display:block;margin-top:8px}
+ .ev{font-size:14px;padding:5px 0;border-top:1px solid var(--line);display:flex;gap:8px}
+ .ev:first-child{border-top:0} .ev time{color:var(--dim);flex:none;font-variant-numeric:tabular-nums}
+ .ev.good{color:#b9f5d0} .ev.warn{color:var(--warn)} .ev.bad{color:var(--bad)}
+ .note{background:#2a2612;color:var(--warn);border-radius:8px;padding:8px 10px;font-size:14px;margin-top:8px}
+ .switch{display:flex;justify-content:space-between;align-items:center;padding:6px 0}
+ .tog{width:54px;height:30px;border-radius:15px;background:var(--line);position:relative;border:0;padding:0}
+ .tog::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.15s}
+ .tog.on{background:var(--ok)} .tog.on::after{left:27px}
+ .net{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:15px;cursor:pointer}
+ .net small{color:var(--dim)}
+ input{width:100%;padding:11px;font-size:16px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);margin:6px 0}
+ a{color:var(--acc)}
+ code{background:var(--bg);padding:2px 6px;border-radius:5px;font-size:15px;user-select:all;-webkit-user-select:all}
+ .plist{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+ .chip{background:var(--bg);border-radius:16px;padding:5px 6px 5px 12px;font-size:14px;display:flex;align-items:center;gap:6px}
+ .chip button{background:none;color:var(--dim);padding:0 6px;font-size:16px}
+ .chip.pend{opacity:.6;font-style:italic}
+ .addrow{display:flex;gap:8px} .addrow input{margin:0} .addrow button{flex:none}
+ .step{display:flex;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:15px}
+ .step:first-child{border-top:0} .step .ic{width:20px;text-align:center;flex:none}
+ .step small{display:block;color:var(--dim);font-size:13px}
+ .step.fail{color:var(--bad)} .step.ok .ic{color:var(--ok)} .step.running .ic{color:var(--acc)}
+ .chk{display:flex;gap:10px;align-items:center;padding:7px 0;font-size:15px}
+ .chk input{width:22px;height:22px;margin:0;flex:none}
+ .bk{display:flex;justify-content:space-between;padding:5px 0;border-top:1px solid var(--line);font-size:14px}
+ .bk:first-child{border-top:0}
+ #off{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
+ #off h1{font-size:24px;margin-bottom:10px}
+ #toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:#000e;border:1px solid var(--line);padding:10px 14px;border-radius:10px;font-size:14px;max-width:90%;display:none;z-index:20}
+ #toast.err{border-color:var(--bad);color:#ffd6d6}
+ header{position:sticky;top:0;z-index:10;background:var(--bg);margin:-16px -16px 12px;padding:12px 16px 8px;border-bottom:1px solid var(--line)}
+ .hrow{display:flex;justify-content:space-between;align-items:center;gap:8px} .hrow h1{white-space:nowrap;font-size:clamp(15px,5vw,20px);margin:0}
+ .pill{font-size:13px;font-weight:600;padding:5px 11px;border-radius:14px;background:var(--line);color:var(--fg);white-space:nowrap;border:0;cursor:pointer;overflow:hidden;text-overflow:ellipsis;max-width:48%;flex:none}
+ .pill.ok{background:#173a26;color:var(--ok)} .pill.warn{background:#3a3214;color:var(--warn)} .pill.bad{background:#401c1c;color:var(--bad)}
+ nav{display:flex;gap:6px;overflow-x:auto;margin-top:8px;scrollbar-width:none} nav::-webkit-scrollbar{display:none}
+ nav a{flex:none;font-size:13px;padding:5px 11px;border-radius:14px;background:var(--card);color:var(--fg);text-decoration:none}
+ .card{scroll-margin-top:96px}
+ .sub{margin:2px 0 0}
+ #offline{display:none;background:#401c1c;color:#ffd6d6;border-radius:8px;padding:8px 10px;font-size:14px;margin-top:8px}
+ .copy{background:none;color:var(--acc);padding:4px 0 4px 10px;font-size:14px}
+ details summary{cursor:pointer;color:var(--dim);font-size:14px;padding:6px 0;list-style-position:inside}
+ .hint{color:var(--warn);font-size:13px;min-height:0}
+ .spin{display:inline-block;animation:sp 1s linear infinite} @keyframes sp{to{transform:rotate(360deg)}}
+ /* server console */
+ #conlog{background:#0a0b0d;border-radius:8px;padding:8px 10px;height:220px;overflow:auto;font:12.5px/1.45 ui-monospace,Consolas,Menlo,monospace;white-space:pre-wrap;word-break:break-word;color:#c9cdd3}
+ #conlog .w{color:var(--warn)} #conlog .e{color:var(--bad)} #conlog .me{color:var(--acc)} #conlog .rep{color:#b9f5d0}
+ .quick{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+ .quick button{padding:7px 11px;font-size:13px;background:var(--line);color:var(--fg);border-radius:14px}
+ .conrow{display:flex;gap:8px;margin-top:8px} .conrow input{margin:0;font-family:ui-monospace,Consolas,monospace} .conrow button{flex:none}
+ /* modpacks */
+ .mp{display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}
+ .mp:first-child{border-top:0} .mp .nm{flex:1;min-width:0} .mp small{display:block;color:var(--dim);font-size:13px}
+ .mp button{padding:7px 12px;font-size:14px;flex:none} .mp .x{background:none;color:var(--dim);padding:4px 8px}
+ .mp .on{color:var(--ok);font-size:13px;font-weight:600;flex:none}
+ .prev{display:flex;gap:12px;margin-top:10px} .prev img{width:64px;height:64px;border-radius:10px;flex:none;background:var(--bg)}
+ .prev b{display:block;font-size:17px} .prev small{display:block;color:var(--dim);font-size:13px}
+ .miss{background:var(--bg);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:14px}
+ .miss code{font-size:13px}
+ /* keybind preset editor */
+ select{width:100%;padding:10px;font-size:15px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);margin:6px 0}
+ .kcat{color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 2px}
+ .krow{display:flex;gap:8px;align-items:center;padding:4px 0;border-top:1px solid var(--line);font-size:14px}
+ .krow .nm{flex:1;min-width:0} .krow small{display:block;color:var(--dim);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .krow .k{padding:6px 10px;font-size:13px;background:var(--line);color:var(--fg);min-width:92px;flex:none}
+ .krow .k.moved{background:#173a4a;color:var(--acc)} .krow .k.listen{background:var(--acc);color:#000}
+ .krow .x{background:none;color:var(--dim);padding:4px 6px;font-size:12px;flex:none}
+ .kedit{background:var(--bg);border-radius:8px;padding:8px;margin:4px 0 6px;font-size:13px}
+ .kedit .btns{margin-top:6px}
+ #kplist{max-height:420px;overflow-y:auto}
+ .k12only{display:none} body.k12 .k12only{display:block} body.k12 .phoneonly{display:none}
+ /* wide screens (the PC's own monitor, a laptop): everything at once, in three columns */
+ @media (min-width:1000px){
+  body{max-width:1560px;padding:20px 24px}
+  header{margin:-20px -24px 16px;padding:14px 24px 10px}
+  header nav{display:none}
+  .hrow h1{font-size:22px}
+  .pill{font-size:15px;max-width:40%}
+  body{padding-bottom:16px}
+  /* the whole window, no page scrolling: a column that doesn't fit scrolls inside itself */
+  #cols{display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:16px;height:calc(100vh - var(--hh,130px) - 32px);min-height:480px}
+  #cols>.col{display:flex;flex-direction:column;gap:14px;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+  #cols>.col>.card{margin:0;flex:none}
+  #cols>.col>#c-con{flex:1 1 auto;display:flex;flex-direction:column;min-height:280px}
+  #c-con #conlog{flex:1;height:auto;min-height:120px}
+  #cols>.col>#c-ev{flex:0 1 auto;max-height:36%;overflow-y:auto;scrollbar-width:thin}
+  .big{font-size:26px}
+ }
+</style></head><body>
+<header>
+  <div class="hrow"><h1>APACHE 4800 // DECK</h1><button class="pill" id="health">…</button></div>
+  <div class="sub" id="time">checking...</div>
+  <div id="offline">Can't reach the Pi – retrying. Is your phone on Tailscale / the case network?</div>
+  <nav><a href="#c-mc">Minecraft</a><a href="#c-hw">Temps</a><a href="#c-pl">Players</a><a href="#c-mod">Modpacks</a><a href="#c-con">Console</a><a href="#c-net">Wi-Fi</a><a href="#c-pack">Pack up</a><a href="#c-bk">Backups</a><a href="#c-ev">Events</a></nav>
+</header>
+
+<div id="cols">
+<div class="card" id="c-mc">
+  <h2>Minecraft</h2>
+  <div class="row" id="mcrow"><span><span class="dot"></span><span class="big" id="mctitle">...</span></span><span class="dim" id="mcplayers"></span></div>
+  <div class="dim" id="mcnames"></div>
+  <div class="dim" id="mcworld"></div>
+  <div id="join"></div>
+  <div id="mcnote"></div>
+  <div class="btns">
+    <button class="wide" id="bstart">Start Minecraft</button>
+    <button class="sec" id="bstop">Stop server</button>
+    <button class="danger" id="boff">Stop + shut down PC</button>
+  </div>
+</div>
+
+<div class="card" id="c-hw">
+  <h2>Hardware</h2>
+  <div class="row" id="k12row"><span><span class="dot"></span>PC</span><span class="dim" id="k12txt"></span></div>
+  <div class="temps" id="temps"></div>
+  <svg id="graph" viewBox="0 0 300 90" preserveAspectRatio="none"></svg>
+  <div class="dim" style="font-size:12px">Last 24 h · <span style="color:var(--acc)">PC CPU</span> · <span style="color:#c792ea">Pi</span></div>
+  <div class="btns phoneonly"><button class="sec wide" id="bwake">Wake PC only</button></div>
+</div>
+
+<div class="card" id="c-pl">
+  <h2>Players allowed</h2>
+  <div class="plist" id="plist"><span class="dim">loading…</span></div>
+  <div class="dim" id="pnote"></div>
+  <div class="addrow"><input id="pname" placeholder="Minecraft name" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="16"><button id="padd">Add</button></div>
+  <div class="hint" id="phint"></div>
+</div>
+
+<div class="card" id="c-mod">
+  <h2>Modpacks</h2>
+  <div id="modjob"></div>
+  <div id="modlist" class="dim">loading…</div>
+  <div class="addrow" style="margin-top:10px"><input id="modlink" placeholder="Paste a CurseForge modpack link" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="300"><button id="modlook">Look up</button></div>
+  <div class="hint" id="modhint"></div>
+  <div id="modprev"></div>
+  <div id="modnote"></div>
+  <div id="kp" style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
+    <h2>Keybind preset</h2>
+    <div class="dim" style="font-size:13px">Players with the keybind mod get asked “Add and switch to the server preset?” when they join this pack.</div>
+    <select id="kpslug" aria-label="Pack"></select>
+    <div id="kpbody"></div>
+    <input type="file" id="kpfile" accept=".json,application/json" style="display:none">
+  </div>
+</div>
+
+<div class="card" id="c-con">
+  <h2>Server console</h2>
+  <div id="conlog"><span class="dim">Shows the server's log while Minecraft runs.</span></div>
+  <div class="quick" id="quick">
+    <button data-c="list">Who's on</button><button data-c="time set day">Make it day</button>
+    <button data-c="weather clear">Clear weather</button><button data-c="save-all">Save now</button>
+  </div>
+  <div class="conrow"><input id="concmd" placeholder="Command, e.g. say hello" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="200" enterkeyhint="send"><button id="consend">Send</button></div>
+  <div class="hint" id="conhint"></div>
+</div>
+
+<div class="card" id="c-net">
+  <h2>Wi-Fi &amp; travel</h2>
+  <div class="row"><span>Pi Wi-Fi</span><span class="dim" id="wifi">...</span></div>
+  <div class="row"><span>Internet</span><span class="dim" id="inet">...</span></div>
+  <div id="portal"></div>
+  <div class="switch"><span>Travel mode<br><span class="dim">Share the Pi's Wi-Fi with the PC + laptop</span></span><button class="tog" id="travel" aria-label="Travel mode"></button></div>
+  <div class="dim" id="travelnote"></div>
+  <div class="btns"><button class="sec wide" id="bscan">Choose Wi-Fi network</button></div>
+  <div id="nets"></div>
+  <div id="pwbox" style="display:none">
+    <div id="pwssid" style="margin-top:8px;font-weight:600"></div>
+    <input id="pw" type="password" placeholder="Password (blank if open or saved)" autocomplete="off">
+    <label class="chk dim"><input type="checkbox" id="pwshow"> Show password</label>
+    <div class="btns"><button id="bconnect">Connect</button><button class="sec" id="bforget">Forget</button></div>
+  </div>
+</div>
+
+<div class="card" id="c-pack">
+  <h2>Pack up &amp; check</h2>
+  <div id="packbox">
+    <div class="dim">Before you close the case: warns players, saves + stops Minecraft, backs up to the Pi, waits for the PC to cool, shuts it down.</div>
+    <div class="btns"><button class="wide" id="bpack">Pack up</button></div>
+  </div>
+  <div id="checkbox" style="margin-top:12px">
+    <div class="btns"><button class="sec wide" id="bcheck">Check the deck</button></div>
+    <label class="chk dim"><input type="checkbox" id="cfull"> Also wake + test the PC (arrival check)</label>
+    <div id="checkres"></div>
+  </div>
+</div>
+
+<div class="card" id="c-bk">
+  <h2>World backups (on the Pi)</h2>
+  <div id="bklist" class="dim">loading…</div>
+  <div class="btns"><button class="sec wide" id="bbackup">Back up now</button></div>
+</div>
+<div class="card" id="c-ev">
+  <h2>Events</h2>
+  <div id="events" class="dim">none yet</div>
+</div>
+</div>
+<div id="off"><h1>Pi is shutting down</h1><div class="dim">Safe to unplug when the Pi's green light stops flashing (about 20 seconds).<br><br>Have a good trip.</div></div>
+<div id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let S=null, busy=false;
+// redraw a card only when its data changed, so taps on checkboxes / links aren't lost
+const last={};
+function changed(k,data){const s=JSON.stringify(data);if(last[k]===s)return false;last[k]=s;return true}
+
+// ?k12=1: opened by the Deck app on the PC's own screen
+const ONPC=new URLSearchParams(location.search).has('k12');
+if(ONPC){document.body.classList.add('k12');
+  $('offline').textContent="Can't reach the Pi – retrying. Is the Pi on and its cable in the case switch?"}
+// phone: one column in this order. Wide screen: three columns, everything visible at once.
+const PHONE=['c-mc','c-hw','c-pl','c-mod','c-con','c-net','c-pack','c-bk','c-ev'];
+const WIDE=[['c-mc','c-hw','c-pl'],['c-con','c-ev'],['c-mod','c-pack','c-net','c-bk']];
+const wideQ=matchMedia('(min-width:1000px)');
+function layout(){
+  const cols=$('cols'), cards=Object.fromEntries(PHONE.map(id=>[id,$(id)]));
+  cols.querySelectorAll(':scope>.col').forEach(c=>c.remove());
+  if(wideQ.matches) WIDE.forEach(ids=>{const c=document.createElement('div');c.className='col';ids.forEach(id=>c.appendChild(cards[id]));cols.appendChild(c)});
+  else PHONE.forEach(id=>cols.appendChild(cards[id]));
+}
+layout(); wideQ.addEventListener('change',layout);
+// wide layout fills the window below the header; the header grows when the offline note shows
+const hh=()=>document.documentElement.style.setProperty('--hh',Math.ceil(document.querySelector('header').getBoundingClientRect().height)+'px');
+addEventListener('resize',hh); hh();
+function toast(t,err){const e=$('toast');e.textContent=t;e.className=err?'err':'';e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',err?7000:4500)}
+const fail=e=>toast(e.message,true);
+async function post(url,body){
+  let r;
+  try{r=await fetch(url,{method:'POST',headers:{'X-Deck':'1','Content-Type':'application/json'},body:JSON.stringify(body||{})})}
+  catch(e){throw new Error("Can't reach the Pi - check your connection and try again.")}
+  let j={};try{j=await r.json()}catch(e){}
+  if(!r.ok||j.ok===false) throw new Error(j.error||('HTTP '+r.status));
+  return j;
+}
+function tcell(label,v,warn,hot){
+  const cls=v==null?'':v>=hot?'t-bad':v>=warn?'t-warn':'';
+  return `<div class="${cls}"><b>${v==null?'–':Math.round(v)+'°'}</b><span>${label}</span></div>`;
+}
+function setRow(id,cls){$(id).className='row '+cls}
+// copy without the clipboard API too: plain http (e.g. http://deckpi:8080) isn't a "secure" page
+function copyText(t){
+  const legacy=()=>{const a=document.createElement('textarea');a.value=t;a.setAttribute('readonly','');a.style.position='fixed';a.style.opacity='0';
+    document.body.appendChild(a);a.select();let ok=false;try{ok=document.execCommand('copy')}catch(e){} a.remove();
+    toast(ok?'Copied '+t:'Press and hold the address to copy it',!ok)};
+  if(navigator.clipboard&&window.isSecureContext) navigator.clipboard.writeText(t).then(()=>toast('Copied '+t),legacy); else legacy();
+}
+// the one-line summary at the top; tapping it jumps to the card that needs you
+let lastCheck=null, offline=false;
+function health(){
+  const st=(S&&S.state)||{};
+  let lvl='ok',txt='All good',go='c-mc';
+  let n=0; const R={ok:0,warn:1,bad:2}, set=(l,t,g)=>{n++;if(R[l]>R[lvl]){lvl=l;txt=t;go=g}};
+  if(offline) set('bad','Pi offline','c-mc');
+  else if(S){
+    if(st.temp_level==='crit'||st.temp_level==='hot') set('bad','PC too hot','c-hw');
+    else if(st.temp_level==='warn') set('warn','PC warm','c-hw');
+    if(st.pi_level==='hot') set('bad','Pi too hot','c-hw'); else if(st.pi_level==='warn') set('warn','Pi warm','c-hw');
+    // an old failed check isn't news any more
+    if(lastCheck&&lastCheck.ok===false&&Date.now()/1000-lastCheck.t<1800) set('warn','Check failed','c-pack');
+    if(S.stale) set('warn','Watchdog stopped','c-ev');
+    if(!S.mac_configured||!S.linked) set('warn','Setup not finished','c-mc');
+    if(S.action&&lvl==='ok'){lvl='warn';txt='Working…';go='c-mc'}
+  }
+  const h=$('health');h.className='pill '+lvl;h.textContent=txt+(n>1?` +${n-1}`:'');h.onclick=()=>$(go).scrollIntoView({behavior:'smooth'});
+}
+function setOffline(v){const was=offline;offline=v;$('offline').style.display=v?'block':'none';if(was!==v)hh();
+  if(v) document.querySelectorAll('#c-mc button,#bwake,#bbackup').forEach(b=>b.disabled=true);
+  health()}
+
+async function refresh(){
+  try{
+    const r=await fetch('api/status',{cache:'no-store'}); if(!r.ok) throw new Error(r.status); const j=await r.json(); S=j; setOffline(false);
+    const st=j.state||{}, k=st.k12||{}, mc=st.mc||{}, t=k.temps||{};
+    $('time').textContent=(j.stale?'⚠ watchdog not updating · ':'')+'Updated '+(st.time||'never');
+    // Minecraft
+    busy=!!j.action; const starting=!!(j.action&&/start/.test(j.action.what));
+    if(mc.online){setRow('mcrow','ok');$('mctitle').textContent='Online';$('mcplayers').textContent=`${mc.players}/${mc.max} playing`;
+      $('mcnames').textContent=(mc.names||[]).join(', ')||'Nobody on right now';}
+    else if(starting){setRow('mcrow','warn');$('mctitle').innerHTML='<span class="spin">◐</span> Starting';$('mcplayers').textContent='';
+      $('mcnames').textContent=k.up?'PC is on – starting the server (1–2 min)':'Waking the PC (can take a few min)';}
+    else{setRow('mcrow',k.up?'warn':'');$('mctitle').textContent=k.up?'Stopped':'Asleep';$('mcplayers').textContent='';$('mcnames').textContent=k.up?'PC is on':'PC is off – Start wakes it';}
+    $('mcworld').textContent='World: '+(j.modpack||'Vanilla');
+    if(changed('join',[mc.online,st.join])){
+      $('join').innerHTML=mc.online&&st.join?`<div class="row"><span>Join at</span><span><code>${esc(st.join)}</code><button class="copy" id="bcopy">Copy</button></span></div>`:'';
+      if($('bcopy')) $('bcopy').onclick=()=>copyText(st.join);
+    }
+    let note='';
+    if(j.action&&!starting) note+=`<div class="note">Working: ${esc(j.action.what)} (by ${esc(j.action.by)})…</div>`;
+    if(mc.online&&st.idle_left_s!=null) note+=`<div class="dim">Empty – stops in ${Math.ceil(st.idle_left_s/60)} min</div>`;
+    if(!j.mac_configured) note+='<div class="note">PC MAC not set – on the Pi run <code>sudo deck-set-mac</code></div>';
+    if(!j.linked) note+='<div class="note">PC agent not linked – see README “Link the PC”.</div>';
+    // newest event while something runs, so you see progress without scrolling to Events
+    const e0=(j.events||[])[0];
+    if(j.action&&e0) note+=`<div class="dim" style="margin-top:6px">${esc((e0.t||'').slice(11,16))} · ${esc(e0.text)}</div>`;
+    $('mcnote').innerHTML=note;
+    $('bstart').disabled=busy||mc.online; $('bstart').textContent=mc.online?'Minecraft is running':starting?'Starting…':'Start Minecraft'; $('bstop').disabled=busy||!mc.online; $('boff').disabled=busy||!k.up; $('bwake').disabled=!!k.up; $('bbackup').disabled=busy||!k.up; $('bbackup').textContent=k.up?'Back up now':'Back up now (needs the PC on)';
+    // hardware
+    setRow('k12row',k.up?'ok':'');
+    $('k12txt').textContent=k.up?('on'+(k.woke_by_deck?' (woken by deck)':'')):'off';
+    $('temps').innerHTML=tcell('PC CPU',t.cpu,85,92)+tcell('PC GPU',t.gpu,85,95)+tcell('PC SSD',t.drive,65,75)+tcell('Pi',(st.pi||{}).temp,75,82);
+    // events
+    if(changed('ev',j.events)){
+      const row=e=>`<div class="ev ${esc(e.level)}"><time>${esc((e.t||'').slice(11,16))}</time><span>${esc(e.text)}</span></div>`;
+      const ev=j.events||[], open=!!($('events').querySelector('details')||{}).open;
+      $('events').innerHTML=ev.length?ev.slice(0,6).map(row).join('')+(ev.length>6?`<details ${open?'open':''}><summary>${ev.length-6} older</summary>${ev.slice(6).map(row).join('')}</details>`:''):'none yet';
+    }
+    health();
+  }catch(e){$('time').textContent='Last try '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});setOffline(true)}
+}
+
+async function graph(){
+  try{
+    const raw=await (await fetch('api/history',{cache:'no-store'})).json();
+    if(!raw.length){$('graph').innerHTML='';return}
+    // average into 10-minute steps so sensor jitter doesn't turn the line into a band
+    const b={};for(const p of raw){const k=Math.floor(p[0]/600);(b[k]=b[k]||[]).push(p)}
+    const avg=(a,i)=>{const v=a.map(p=>p[i]).filter(x=>x!=null);return v.length?v.reduce((s,x)=>s+x,0)/v.length:null};
+    const h=Object.keys(b).sort((x,y)=>x-y).map(k=>[k*600+300,avg(b[k],1),avg(b[k],2)]);
+    const t0=Date.now()/1000-86400, lo=20, hi=100;
+    const X=t=>Math.max(0,(t-t0)/86400*300), Y=v=>90-(Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*90;
+    const line=(i,col)=>{let d='',pen=false;for(const p of h){if(p[0]<t0)continue;if(p[i]==null){pen=false;continue}
+      d+=(pen?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[i]).toFixed(1);pen=true}
+      return `<path d="${d}" fill="none" stroke="${col}" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`};
+    const grid=[40,60,80].map(v=>`<line x1="0" x2="300" y1="${Y(v)}" y2="${Y(v)}" stroke="#2a2d33" vector-effect="non-scaling-stroke"/><text x="2" y="${Y(v)-2}" fill="#8a8f98" font-size="8">${v}°</text>`).join('');
+    $('graph').innerHTML=grid+line(2,'#c792ea')+line(1,'#4cc9f0');
+  }catch(e){}
+}
+
+let portalTimer=null;
+async function netRefresh(fresh){
+  try{
+    const n=await (await fetch('api/net'+(fresh?'?fresh=1':''),{cache:'no-store'})).json();
+    // while a login page is in the way, check every 5 s so "online" shows up quickly
+    clearTimeout(portalTimer);
+    if(n.internet==='portal') portalTimer=setTimeout(()=>netRefresh(true),5000);
+    if(n.ok===false){$('wifi').textContent=n.error||'error';return}
+    const w=n.wifi||{};
+    $('wifi').textContent=w.ssid?`${w.ssid} (${w.signal}%)`:n.wifi_radio===false?'switched off – Choose Wi-Fi network turns it on':'not connected';
+    $('inet').textContent={online:'online',portal:'login page in the way',offline:'none'}[n.internet]||'?';
+    $('portal').innerHTML=n.internet==='portal'?
+      `<div class="note">This Wi-Fi wants you to log in. Turn travel mode on, then on the laptop (with its own Wi-Fi off) open <a href="${esc(n.portal_url)}" target="_blank" rel="noopener">the login page</a>. Logging in once covers the whole case.</div>`:'';
+    $('travel').classList.toggle('on',!!n.travel);$('travel').setAttribute('aria-pressed',n.travel?'true':'false');
+    $('travelnote').textContent=n.travel?'On: the PC and laptop reach the internet through the Pi. Laptop: run travel-on.cmd.':'';
+  }catch(e){}
+}
+
+let chosen=null;
+$('bscan').onclick=async()=>{
+  $('bscan').disabled=true;$('nets').innerHTML='<div class="dim">Scanning…</div>';
+  try{const r=await (await fetch('api/wifi/scan')).json();
+    if(r.ok===false) throw new Error(r.error);
+    $('nets').innerHTML=r.networks.map((n,i)=>`<div class="net" data-i="${i}"><span>${n.in_use?'✓ ':''}${esc(n.ssid)} ${n.saved?'<small>saved</small>':''}</span><small>${n.signal}% · ${esc(n.security)}</small></div>`).join('')||'<div class="dim">No networks found</div>';
+    document.querySelectorAll('.net').forEach(el=>el.onclick=()=>{chosen=r.networks[+el.dataset.i];
+      $('pwbox').style.display='block';$('pwssid').textContent=chosen.ssid;$('pw').value='';$('bforget').disabled=!chosen.saved;$('pw').focus()});
+  }catch(e){$('nets').innerHTML=`<div class="note">${esc(e.message)}</div>`}
+  $('bscan').disabled=false;
+};
+$('pwshow').onchange=()=>{$('pw').type=$('pwshow').checked?'text':'password'};
+$('pw').onkeydown=e=>{if(e.key==='Enter')$('bconnect').click()};
+$('bconnect').onclick=async()=>{
+  if(!chosen)return; $('bconnect').disabled=true; toast('Connecting to '+chosen.ssid+'… (if you reach this page over that Wi-Fi it may drop for a moment)');
+  try{const r=await post('api/wifi/connect',{ssid:chosen.ssid,password:$('pw').value});toast(r.msg||'Connected');$('pwbox').style.display='none';$('nets').innerHTML=''}
+  catch(e){fail(e)}
+  $('pw').value='';$('pwshow').checked=false;$('pw').type='password';$('bconnect').disabled=false;netRefresh();
+};
+$('bforget').onclick=async()=>{
+  if(!chosen||!confirm('Forget '+chosen.ssid+'?'))return;
+  try{const r=await post('api/wifi/forget',{ssid:chosen.ssid});toast(r.msg);$('pwbox').style.display='none';$('nets').innerHTML=''}catch(e){fail(e)}
+  netRefresh();
+};
+$('travel').onclick=async()=>{
+  const on=!$('travel').classList.contains('on'); $('travel').disabled=true;
+  try{const r=await post('api/travel',{on});toast('Travel mode '+(on?'on':'off')+(r.k12&&!r.k12.ok?' – PC: '+r.k12.error:''))}catch(e){fail(e)}
+  $('travel').disabled=false; netRefresh(); refresh();
+};
+async function act(url,msg,confirmText,btn){
+  if(confirmText&&!confirm(confirmText))return;
+  if(btn) btn.disabled=true;   // no double taps; refresh() re-enables it
+  try{await post(url);toast(msg)}catch(e){fail(e)}
+  setTimeout(()=>{refresh();backups()},800);
+}
+const playing=()=>(S&&S.state&&S.state.mc&&S.state.mc.online&&S.state.mc.players)||0;
+$('bstart').onclick=()=>act('api/mc/start','Starting – the PC wakes first if it was off (1–4 min).',null,$('bstart'));
+// only ask "are you sure" when someone would actually get kicked
+$('bstop').onclick=()=>act('api/mc/stop','Saving the world and stopping…',playing()?`Stop the server? ${playing()} playing get kicked.`:null,$('bstop'));
+$('boff').onclick=()=>act('api/mc/off','Stopping, then the PC shuts down in 1 minute.',
+  (ONPC?'Stop Minecraft and shut THIS PC down? This screen goes dark in about a minute.':'Stop Minecraft AND shut the PC down?')+(playing()?` ${playing()} playing get kicked.`:''),$('boff'));
+if(ONPC) $('boff').textContent='Stop + shut down this PC';
+$('bwake').onclick=()=>act('api/wake','Wake-up sent. The PC usually answers in 20–60 s.',null,$('bwake'));
+// ---------------- players allowed
+async function players(fresh){
+  try{
+    const r=await (await fetch('api/whitelist'+(fresh?'?fresh=1':''),{cache:'no-store'})).json();
+    if(!changed('wl',r))return;
+    const pend=r.pending||[];
+    $('plist').innerHTML=(r.names||[]).map(n=>`<span class="chip">${esc(n)}<button data-n="${esc(n)}" title="Remove">✕</button></span>`).join('')
+      +pend.map(p=>`<span class="chip pend" title="Waiting for the PC">${p.action==='add'?'+':'−'} ${esc(p.name)}</span>`).join('')
+      ||'<span class="dim">Nobody yet</span>';
+    $('pnote').textContent=(r.live?'':'PC is off – this is the last list the Pi saw. ')+(pend.length?'Faded names change when the PC next starts.':'');
+    document.querySelectorAll('#plist .chip button').forEach(b=>b.onclick=async()=>{
+      if(!confirm('Remove '+b.dataset.n+'? They get kicked if they are playing.'))return;
+      try{toast((await post('api/whitelist',{action:'remove',name:b.dataset.n})).msg)}catch(e){fail(e)} players(true);
+    });
+  }catch(e){$('plist').textContent='Could not load the list.'}
+}
+// same rule Minecraft uses: 3-16 letters, numbers or _
+function nameHint(){const n=$('pname').value.trim();
+  const h=!n?'':/[^A-Za-z0-9_]/.test(n)?'Only letters, numbers and _ (no spaces).':n.length<3?'Too short – names are 3 to 16 characters.':'';
+  $('phint').textContent=h; $('padd').disabled=!n||!!h; return !h}
+$('pname').oninput=nameHint; nameHint();
+$('padd').onclick=async()=>{
+  const n=$('pname').value.trim(); if(!n||!nameHint())return; $('padd').disabled=true; toast('Checking '+n+' with Mojang…');
+  try{toast((await post('api/whitelist',{action:'add',name:n})).msg);$('pname').value=''}catch(e){fail(e)}
+  nameHint(); players(true);
+};
+$('pname').onkeydown=e=>{if(e.key==='Enter')$('padd').click()};
+
+// ---------------- pack up
+const IC={pending:'○',running:'◐',ok:'✓',skip:'–',fail:'✕'};
+const ticked=new Set();
+async function pack(){
+  try{
+    const j=await (await fetch('api/pack',{cache:'no-store'})).json(), p=j.pack;
+    if(!changed('pack',[j,[...ticked]]))return;
+    if(!p){
+      // on the PC's own screen: it goes dark when the PC shuts down, so offer to turn the Pi off too
+      const piOff=$('piOffChk')?$('piOffChk').checked:true;
+      $('packbox').innerHTML=`<div class="dim">Before you close the case: warns players, saves + stops Minecraft, backs up to the Pi, waits for the PC to cool, shuts it down.</div>`+
+        (ONPC?`<div class="note">This screen goes dark when the PC shuts down. The by-hand checklist is on your phone's Deck Panel.</div>
+          <label class="chk"><input type="checkbox" id="piOffChk" ${piOff?'checked':''}> Shut the Pi down too at the end (whole deck off)</label>`:'')+
+        `<div class="btns"><button class="wide" id="bpack">Pack up</button></div>`;
+      $('bpack').onclick=startPack; return;}
+    let h=p.steps.map(s=>`<div class="step ${s.status}"><span class="ic">${IC[s.status]||'?'}</span><span>${esc(s.label)}${s.detail?`<small>${esc(s.detail)}</small>`:''}</span></div>`).join('');
+    if(p.done&&p.pi_off&&p.ok){
+      h+=`<div class="note" style="color:var(--ok);background:#173a26">Done – the Pi is shutting down too. Unplug the deck when its green light stops flashing (about 20 s).</div>`;
+    } else if(p.done){
+      const list=j.checklist||[];
+      h+=`<div style="margin-top:10px;font-weight:600">${p.ok?'Now by hand:':'Some steps had problems (above). By hand:'}</div>`+
+        list.map((c,i)=>`<label class="chk"><input type="checkbox" data-i="${i}" ${ticked.has(i)?'checked':''}> ${esc(c)}</label>`).join('');
+      const all=list.every((c,i)=>ticked.has(i));
+      h+=`<div class="btns"><button class="danger wide" id="bpioff" ${all?'':'disabled'}>Shut down the Pi</button><button class="sec wide" id="bpackclr">Done / start over</button></div>`;
+    } else h+='<div class="dim" style="margin-top:8px">Working… keep this page open or check back.</div>';
+    $('packbox').innerHTML=h;
+    document.querySelectorAll('#packbox input[type=checkbox]').forEach(c=>c.onchange=()=>{c.checked?ticked.add(+c.dataset.i):ticked.delete(+c.dataset.i);pack()});
+    if($('bpioff')) $('bpioff').onclick=async()=>{
+      if(!confirm('Shut the Pi down now? You will need to plug the deck in again to use it.'))return;
+      try{await post('api/pi/poweroff');$('off').style.display='flex'}catch(e){fail(e)}
+    };
+    if($('bpackclr')) $('bpackclr').onclick=async()=>{ticked.clear();try{await post('api/pack/clear')}catch(e){fail(e)} pack()};
+  }catch(e){}
+}
+async function startPack(){
+  const pl=(S&&S.state&&S.state.mc&&S.state.mc.players)||0;
+  const piOff=ONPC&&!!($('piOffChk')&&$('piOffChk').checked);
+  if(!confirm('Pack up? This stops Minecraft'+(pl?` (${pl} playing – they get a warning)`:'')+', backs up the world and shuts '+
+    (ONPC?'this PC down'+(piOff?', then the Pi.':'. The Pi stays on.'):'the PC down.')))return;
+  ticked.clear(); try{await post('api/pack',{pi_off:piOff});toast('Packing up…')}catch(e){fail(e)} setTimeout(pack,800);
+}
+$('bpack').onclick=startPack;
+
+// ---------------- deck check
+async function check(){
+  try{
+    const j=await (await fetch('api/check',{cache:'no-store'})).json(), r=j.result;
+    lastCheck=r; health();
+    if(!changed('check',j))return;
+    $('bcheck').disabled=j.running; $('bcheck').textContent=j.running?'Checking…':'Check the deck';
+    if(!r){$('checkres').innerHTML='';return}
+    const ic=v=>v===true?'✓':v===false?'✕':'–';
+    const row=x=>`<div class="step ${x.ok===false?'fail':x.ok?'ok':''}"><span class="ic">${ic(x.ok)}</span><span>${esc(x.name)}<small>${esc(x.detail)}${x.ok===false&&x.fix?' – '+esc(x.fix):''}</small></span></div>`;
+    // problems first; the checks that passed fold away
+    const bad=r.results.filter(x=>x.ok===false), rest=r.results.filter(x=>x.ok!==false);
+    const open=!!($('checkres').querySelector('details')||{}).open;
+    $('checkres').innerHTML=`<div style="margin:6px 0;font-weight:600;color:var(--${r.ok?'ok':'warn'})">${r.ok?'✓ All good':bad.length+' thing'+(bad.length>1?'s':'')+' to fix'} <span class="dim" style="font-weight:400">· ${new Date(r.t*1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}${r.full?' · with PC':''}</span></div>`+
+      bad.map(row).join('')+(rest.length?`<details ${open?'open':''}><summary>${rest.length} passed</summary>${rest.map(row).join('')}</details>`:'');
+  }catch(e){}
+}
+$('bcheck').onclick=async()=>{try{await post('api/check',{full:$('cfull').checked});toast($('cfull').checked?'Checking (waking the PC can take a few minutes)…':'Checking…')}catch(e){fail(e)} setTimeout(check,500)};
+
+// ---------------- server console
+let conMine=[], conStick=true, conRunning=false;
+const CMD_OK=/^[A-Za-z0-9 _.,:~@!?#/+=()*\[\]-]*$/;
+$('conlog').addEventListener('scroll',()=>{const e=$('conlog');conStick=e.scrollTop+e.clientHeight>=e.scrollHeight-24});
+// on a phone, only fetch the log while the card is on screen (each fetch is an SSH call to the PC)
+const conSeen=()=>{const r=$('c-con').getBoundingClientRect();return r.bottom>0&&r.top<innerHeight};
+let conWasSeen=false;
+addEventListener('scroll',()=>{const s=conSeen();if(s&&!conWasSeen)consoleRefresh();conWasSeen=s},{passive:true});
+function conButtons(){
+  const c=$('concmd').value.trim(), bad=!CMD_OK.test(c);
+  $('conhint').textContent=bad?'Quotes, braces, ; $ | & and ` are not sent.':'';
+  $('consend').disabled=!conRunning||!c||bad;
+  document.querySelectorAll('#quick button').forEach(b=>b.disabled=!conRunning);
+}
+async function consoleRefresh(){
+  if(!wideQ.matches&&!conSeen()) return;
+  try{
+    const j=await (await fetch('api/console',{cache:'no-store'})).json();
+    conRunning=!!j.running; conButtons();
+    if(!changed('con',[j,conMine]))return;
+    const lines=j.lines||[];
+    // "[12:00:01] [Server thread/INFO]: Steve joined" -> "12:00:01 Steve joined" (half the width on a phone)
+    const tidy=l=>l.replace(/^\[(\d\d:\d\d:\d\d)\] \[[^\]]*\/(INFO|WARN|ERROR|FATAL)\]: /,(m,t,lv)=>t+(lv==='INFO'?' ':' ⚠ '));
+    let h=lines.map(l=>`<div class="${/ERROR|FATAL|Exception/.test(l)?'e':/WARN/.test(l)?'w':''}">${esc(tidy(l))}</div>`).join('');
+    if(!lines.length) h=`<div class="dim">${j.ok===false?esc(j.error):j.k12===false?'The PC is off.':j.running?'No log lines yet.':"Minecraft isn't running."}</div>`;
+    h+=conMine.map(m=>`<div class="${m.me?'me':m.err?'e':'rep'}">${esc(m.t)}</div>`).join('');
+    $('conlog').innerHTML=h;
+    if(conStick) $('conlog').scrollTop=$('conlog').scrollHeight;
+  }catch(e){}
+}
+async function conSend(c){
+  c=c.trim().replace(/^\//,''); if(!c||!CMD_OK.test(c))return;
+  conMine.push({me:1,t:'> /'+c}); conStick=true; $('consend').disabled=true;
+  try{const r=await post('api/console',{cmd:c}); conMine.push({t:r.msg||'done'}); if($('concmd').value.trim().replace(/^\//,'')===c)$('concmd').value=''}
+  catch(e){conMine.push({err:1,t:e.message})}
+  conMine=conMine.slice(-40); conButtons(); consoleRefresh();
+}
+$('concmd').oninput=conButtons;
+$('concmd').onkeydown=e=>{if(e.key==='Enter'&&!$('consend').disabled)conSend($('concmd').value)};
+$('consend').onclick=()=>conSend($('concmd').value);
+document.querySelectorAll('#quick button').forEach(b=>b.onclick=()=>conSend(b.dataset.c));
+conButtons();
+
+// ---------------- modpacks
+let modData=null, modPrev=null;
+async function modpacks(fresh){
+  try{
+    const j=await (await fetch('api/modpack'+(fresh?'?fresh=1':''),{cache:'no-store'})).json();
+    modData=j;
+    if(!changed('mod',[j,!!(S&&S.action)]))return;
+    const busyNow=!!(S&&S.action)||!!(j.job&&j.job.running);
+    if(j.ok===false){$('modlist').innerHTML=`<div class="note">${esc(j.error)}</div>`;return}
+    // the worlds you can switch between: vanilla + every installed pack
+    const row=(slug,name,sub,isOn)=>`<div class="mp"><span class="nm">${esc(name)}<small>${esc(sub)}</small></span>`+
+      (isOn?'<span class="on">● on now</span>':`<button class="sec" data-sw="${esc(slug)}" ${busyNow?'disabled':''}>Switch</button>`)+
+      (slug&&!isOn?`<button class="x" data-del="${esc(slug)}" data-nm="${esc(name)}" title="Delete" ${busyNow?'disabled':''}>✕</button>`:'')+'</div>';
+    let h=row('','Vanilla','plain Minecraft',!j.active);
+    for(const p of j.packs){
+      h+=row(p.slug,p.name,[p.mc&&('Minecraft '+p.mc),p.loader,p.has_world?'':'no world yet'].filter(Boolean).join(' · '),p.slug===j.active);
+      // mods the auto-fix took out of this pack: players keep them, the server doesn't need them
+      for(const r of p.removed||[]) h+=`<div class="mp" style="border-top:0;padding:0 0 6px 12px"><span class="nm"><small>Taken out: <b>${esc(r.name)}</b> – ${esc(r.why||'only works on players’ computers')}</small></span><button class="x" data-pb="${esc(p.slug)}" data-id="${esc(String(r.id))}" data-nm="${esc(r.name)}" ${busyNow?'disabled':''}>Put back</button></div>`;
+    }
+    $('modlist').innerHTML=h+(j.live?'':'<div class="dim" style="font-size:13px">PC is off – this is the last list the Pi saw.</div>');
+    document.querySelectorAll('#modlist [data-sw]').forEach(b=>b.onclick=()=>modSwitch(b.dataset.sw));
+    document.querySelectorAll('#modlist [data-del]').forEach(b=>b.onclick=()=>modDelete(b.dataset.del,b.dataset.nm));
+    document.querySelectorAll('#modlist [data-pb]').forEach(b=>b.onclick=async()=>{
+      if(!confirm(`Put ${b.dataset.nm} back in the pack? It's used from the next start, and the deck won't take it out again. If it crashes the server, Switch back to that pack and it stops with a message instead.`))return;
+      try{toast((await post('api/modpack/putback',{slug:b.dataset.pb,id:+b.dataset.id})).msg)}catch(e){fail(e)} modpacks(true);
+    });
+    let note='';
+    if(!j.pi_key) note+='<div class="note">No CurseForge key on the Pi yet – on the Pi run <code>sudo deck-curseforge-setup</code> (README › Modpacks).</div>';
+    if(j.live&&j.pc_key===false) note+='<div class="note">No CurseForge key on the PC yet – run <code>setup-curseforge.cmd</code> there.</div>';
+    $('modnote').innerHTML=note;
+    modJob(j.job);
+    $('modlook').disabled=busyNow;
+    kpPacks();
+  }catch(e){$('modlist').textContent='Could not load the modpacks.'}
+}
+function modJob(p){
+  if(!p){$('modjob').innerHTML='';return}
+  let h=`<div style="font-weight:600;margin-bottom:4px">${p.running?'Switching to ':p.ok?'Now on ':'Switching to '}${esc(p.name)}${p.done&&!p.ok?' – needs you':''}</div>`;
+  h+=p.steps.map(s=>`<div class="step ${s.status}"><span class="ic">${IC[s.status]||'?'}</span><span>${esc(s.label)}${s.detail?`<small>${esc(s.detail)}</small>`:''}</span></div>`).join('');
+  if(p.missing&&p.missing.length){
+    h+=`<div class="note">These mods' authors don't allow automatic downloads. For each one: open the download page, download that exact file, then press <b>Upload</b> and pick it. (Or put it on the PC in <code>C:\\deck\\game-servers\\downloads\\${esc(p.target)}</code>.) Then press Try again.</div>`+
+      p.missing.map((m,i)=>`<div class="miss"><b>${esc(m.mod)}</b><br><code>${esc(m.file)}</code><br>${m.url?`<a href="${esc(m.url)}" target="_blank" rel="noopener">Download page</a>`:'<span class="dim">search for it on curseforge.com</span>'}
+        <div class="btns" style="margin-top:6px"><button class="sec wide" data-up="${i}" ${p.running?'disabled':''}>Upload ${esc(m.file)}</button></div>
+        <input type="file" accept=".jar" data-upf="${i}" style="display:none"><div class="dim" data-ups="${i}" style="font-size:13px"></div></div>`).join('');
+  }
+  if(p.done) h+=`<div class="btns">${!p.ok&&p.target?`<button id="modretry">Try again</button>`:''}<button class="sec ${!p.ok&&p.target?'':'wide'}" id="modok">OK</button></div>`;
+  else h+='<div class="dim" style="margin-top:6px">Working… the first start of a pack downloads every mod and can take 10+ minutes.</div>';
+  $('modjob').innerHTML=h+'<div style="height:10px"></div>';
+  if($('modretry')) $('modretry').onclick=()=>modSwitch(p.target,true);
+  // upload a hand-downloaded mod: saved on the PC under the exact name the server looks for
+  document.querySelectorAll('#modjob [data-up]').forEach(b=>{
+    const i=+b.dataset.up, inp=document.querySelector(`#modjob [data-upf="${i}"]`), out=document.querySelector(`#modjob [data-ups="${i}"]`), want=p.missing[i];
+    b.onclick=()=>inp.click();
+    inp.onchange=async()=>{
+      const f=inp.files[0]; if(!f)return;
+      if(!/\.jar$/i.test(f.name)){out.textContent='That isn’t a .jar file.';return}
+      if(f.size>100*2**20){out.textContent='That file is over 100 MB.';return}
+      b.disabled=true; out.textContent='Uploading '+size(f.size)+'…';
+      try{
+        const r=await fetch('api/modpack/upload?slug='+encodeURIComponent(p.target)+'&name='+encodeURIComponent(want.file),{method:'POST',headers:{'X-Deck':'1'},body:f});
+        const j=await r.json(); if(!r.ok||j.ok===false) throw new Error(j.error||('HTTP '+r.status));
+        out.textContent='✓ On the PC'+(f.name!==want.file?' (saved as '+want.file+')':'')+'. Upload the others, then press Try again.';
+      }catch(e){out.textContent='✕ '+e.message;b.disabled=false}
+    };
+  });
+  if($('modok')) $('modok').onclick=async()=>{try{await post('api/modpack/clear')}catch(e){} modpacks(true)};
+}
+const playersNote=()=>playing()?` ${playing()} playing get a 1-minute warning first.`:'';
+async function modSwitch(slug,again){
+  const nm=slug?((modData&&modData.packs.find(p=>p.slug===slug))||{name:slug}).name:'Vanilla';
+  if(!again&&!confirm(`Switch the server to ${nm}? It saves and backs up the current world, then restarts.`+playersNote()))return;
+  try{await post('api/modpack/switch',{slug});toast('Switching to '+nm+'…')}catch(e){fail(e)}
+  setTimeout(()=>{refresh();modpacks(true)},800);
+}
+async function modDelete(slug,nm){
+  if(!confirm(`Delete ${nm} and its world from the PC? Its world is backed up to the Pi first, and backups are never deleted.`))return;
+  try{toast((await post('api/modpack/delete',{slug})).msg||'Deleting…')}catch(e){fail(e)}
+  setTimeout(()=>modpacks(true),1500);
+}
+function modHint(){const t=$('modlink').value.trim();
+  const h=!t?'':/^[a-z0-9][a-z0-9-]*$/.test(t)||/curseforge\.com\/minecraft\/modpacks\//i.test(t)?'':'Paste the pack page link from curseforge.com/minecraft/modpacks/…';
+  $('modhint').textContent=h; return !!t&&!h}
+$('modlink').oninput=()=>{modHint();if(modPrev){modPrev=null;$('modprev').innerHTML=''}};
+$('modlink').onkeydown=e=>{if(e.key==='Enter')$('modlook').click()};
+$('modlook').onclick=async()=>{
+  if(!modHint())return; const link=$('modlink').value.trim();
+  $('modlook').disabled=true;$('modprev').innerHTML='<div class="dim" style="margin-top:8px">Asking CurseForge…</div>';
+  try{
+    const p=await post('api/modpack/preview',{link}); modPrev=p;
+    const installed=modData&&modData.packs.some(x=>x.slug===p.slug);
+    $('modprev').innerHTML=`<div class="prev">${p.logo?`<img src="${esc(p.logo)}" alt="">`:''}<span><b>${esc(p.name)}</b>
+      <small>${esc(p.summary)}</small>
+      <small>Minecraft ${esc(p.mc||'?')} · ${esc(p.loader||'loader unknown')} · version ${esc(p.file_name)}${p.pinned?' (the one in your link)':' (newest)'}</small>
+      <small>${p.downloads.toLocaleString()} downloads · <a href="${esc(p.url)}" target="_blank" rel="noopener">CurseForge page</a></small></span></div>`+
+      (p.warning?`<div class="note">${esc(p.warning)}</div>`:'')+
+      (installed?'<div class="dim" style="font-size:13px;margin-top:6px">Already installed – this switches to it and updates it to this version. Its world is kept.</div>':'')+
+      `<div class="btns"><button class="wide" id="modinst" ${p.can_install?'':'disabled'}>${installed?'Switch + update':'Install'}</button></div>`;
+    $('modinst').onclick=async()=>{
+      if(!confirm(`Install ${p.name} and switch the server to it? The current world is saved and backed up first, then the server restarts. The first start downloads every mod (can take 10+ minutes).`+playersNote()))return;
+      $('modinst').disabled=true;
+      try{toast((await post('api/modpack/install',{link})).msg||'Installing…');$('modlink').value='';$('modprev').innerHTML='';modPrev=null}catch(e){fail(e);$('modinst').disabled=false}
+      setTimeout(()=>{refresh();modpacks(true)},800);
+    };
+  }catch(e){$('modprev').innerHTML=`<div class="note">${esc(e.message)}</div>`}
+  $('modlook').disabled=false;
+};
+
+// ---------------- keybind presets (docs/keybind-preset-format.md)
+// browser key code -> Minecraft key name
+const KEYMAP=(()=>{const m={Space:'space',Tab:'tab',Enter:'enter',Escape:'escape',Backspace:'backspace',CapsLock:'caps.lock',
+  ShiftLeft:'left.shift',ShiftRight:'right.shift',ControlLeft:'left.control',ControlRight:'right.control',AltLeft:'left.alt',AltRight:'right.alt',
+  MetaLeft:'left.win',MetaRight:'right.win',ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',Insert:'insert',Delete:'delete',
+  Home:'home',End:'end',PageUp:'page.up',PageDown:'page.down',Minus:'minus',Equal:'equal',BracketLeft:'left.bracket',BracketRight:'right.bracket',
+  Backslash:'backslash',Semicolon:'semicolon',Quote:'apostrophe',Backquote:'grave.accent',Comma:'comma',Period:'period',Slash:'slash',
+  NumpadAdd:'keypad.add',NumpadSubtract:'keypad.subtract',NumpadMultiply:'keypad.multiply',NumpadDivide:'keypad.divide',NumpadDecimal:'keypad.decimal',NumpadEnter:'keypad.enter'};
+  for(let c=65;c<=90;c++)m['Key'+String.fromCharCode(c)]=String.fromCharCode(c+32);
+  for(let i=0;i<=9;i++){m['Digit'+i]=''+i;m['Numpad'+i]='keypad.'+i}
+  for(let i=1;i<=12;i++)m['F'+i]='f'+i;
+  const o={};for(const k in m)o[k]='key.keyboard.'+m[k];return o})();
+const MOUSE=['key.mouse.left','key.mouse.middle','key.mouse.right','key.mouse.4','key.mouse.5'];
+const ALLKEYS=['key.keyboard.unknown',...MOUSE,...Object.values(KEYMAP)];
+function keyName(k){
+  if(!k||k==='key.keyboard.unknown')return '(not set)';
+  const mouse={left:'Left Click',right:'Right Click',middle:'Middle Click'};
+  let s=k.replace(/^key\.(keyboard|mouse)\./,'');
+  if(k.startsWith('key.mouse.'))return mouse[s]||('Mouse '+s);
+  s=s.replace(/^keypad\./,'Keypad ').replace('grave.accent','`').replace(/\./g,' ');
+  return s.length===1?s.toUpperCase():s.replace(/\b\w/g,c=>c.toUpperCase());
+}
+const catName=c=>(c||'other').replace(/^key\.categories\./,'').replace(/[._]/g,' ').replace(/\bkey\b|\bcategory\b/g,'').trim().replace(/\b\w/g,x=>x.toUpperCase())||'Other';
+let KP={slug:'',preset:null,saved:'',edit:-1,filter:''};
+function kpPacks(){
+  const packs=(modData&&modData.packs)||[], sel=$('kpslug'), cur=KP.slug||(modData&&modData.active)||(packs[0]||{}).slug||'';
+  const opts=packs.map(p=>`<option value="${esc(p.slug)}" ${p.slug===cur?'selected':''}>${esc(p.name)}</option>`).join('');
+  if(sel.dataset.o!==opts){sel.innerHTML=opts||'<option value="">Install a modpack first</option>';sel.dataset.o=opts}
+  sel.disabled=!packs.length;
+  if(cur!==KP.slug){KP.slug=cur;kpLoad()}
+}
+$('kpslug').onchange=()=>{if(kpDirty()&&!confirm('Throw away your unsaved key changes?')){$('kpslug').value=KP.slug;return}KP.slug=$('kpslug').value;kpLoad()};
+const kpDirty=()=>KP.preset&&JSON.stringify(KP.preset)!==KP.saved;
+async function kpLoad(){
+  if(!KP.slug){$('kpbody').innerHTML='';return}
+  try{const j=await (await fetch('api/preset?slug='+encodeURIComponent(KP.slug),{cache:'no-store'})).json();
+    KP.preset=j.preset;KP.saved=JSON.stringify(j.preset);KP.edit=-1;kpRender()}catch(e){$('kpbody').innerHTML='<div class="note">Could not load the preset.</div>'}
+}
+function kpRender(){
+  const p=KP.preset;
+  if(!p){
+    $('kpbody').innerHTML=`<div class="dim" style="font-size:14px;margin-top:4px">No preset for this pack yet. In Minecraft with the keybind mod: set every key the way you want, press <b>Export</b>, then import that file here.</div>
+      <div class="btns"><button class="wide" id="kpimp">Import from the game…</button></div>`;
+    $('kpimp').onclick=()=>$('kpfile').click();return;
+  }
+  const moved=p.keys.filter(k=>k.default&&k.default!==k.key||k.modifier&&k.modifier!=='NONE').length;
+  let h=`<input id="kpname" maxlength="60" value="${esc(p.name)}" aria-label="Preset name">
+    <div class="dim" style="font-size:13px">${p.keys.length} keys · ${moved} changed from the mods' defaults${p.minecraft?' · Minecraft '+esc(p.minecraft):''}${kpDirty()?' · <b style="color:var(--warn)">not saved</b>':''}</div>
+    <input id="kpfind" placeholder="Find a key…" value="${esc(KP.filter)}" autocomplete="off"><div id="kplist">`;
+  const f=KP.filter.toLowerCase(); let cat=null;
+  const rows=p.keys.map((k,i)=>[k,i]).filter(([k])=>!f||(k.label||'').toLowerCase().includes(f)||k.id.toLowerCase().includes(f)||keyName(k.key).toLowerCase().includes(f))
+    .sort((a,b)=>(a[0].category||'').localeCompare(b[0].category||'')||a[1]-b[1]);
+  for(const [k,i] of rows){
+    if(k.category!==cat){cat=k.category;h+=`<div class="kcat">${esc(catName(cat))}</div>`}
+    const isMoved=k.default&&k.default!==k.key||k.modifier&&k.modifier!=='NONE';
+    h+=`<div class="krow"><span class="nm">${esc(k.label||k.id)}<small>${esc(k.id)}</small></span>
+      <button class="k ${isMoved?'moved':''} ${KP.edit===i?'listen':''}" data-k="${i}">${KP.edit===i?'Press a key…':(k.modifier&&k.modifier!=='NONE'?esc(k.modifier[0]+k.modifier.slice(1).toLowerCase())+' + ':'')+esc(keyName(k.key))}</button></div>`;
+    if(KP.edit===i) h+=`<div class="kedit">Press a key or click a mouse button on the yellow button. On a phone, pick it here:
+      <select id="kpsel">${ALLKEYS.map(x=>`<option value="${x}" ${x===k.key?'selected':''}>${esc(keyName(x))}</option>`).join('')}</select>
+      <select id="kpmod">${['NONE','SHIFT','CONTROL','ALT'].map(x=>`<option ${x===(k.modifier||'NONE')?'selected':''} value="${x}">${x==='NONE'?'No extra key':'Hold '+x[0]+x.slice(1).toLowerCase()+' (Forge only)'}</option>`).join('')}</select>
+      <div class="btns"><button class="sec" id="kpunb">Not set</button><button class="sec" id="kpdef" ${k.default?'':'disabled'}>Default (${esc(keyName(k.default))})</button><button class="wide" id="kpdone">Done</button></div></div>`;
+  }
+  h+=`</div>${rows.length?'':'<div class="dim">No keys match.</div>'}
+    <div class="btns"><button id="kpsave" ${kpDirty()?'':'disabled'}>Save preset</button><button class="sec" id="kpimp">Import again…</button>
+    <a class="dim" style="grid-column:1/-1;font-size:13px" href="api/preset/file?slug=${encodeURIComponent(KP.slug)}" download>Download the saved file</a>
+    <button class="danger" id="kpdel" style="grid-column:1/-1">Remove this pack's preset</button></div>`;
+  $('kpbody').innerHTML=h;
+  $('kpname').oninput=()=>{p.name=$('kpname').value;kpStatus()};
+  $('kpfind').oninput=()=>{KP.filter=$('kpfind').value;const at=$('kpfind').selectionStart;kpRender();$('kpfind').focus();$('kpfind').setSelectionRange(at,at)};
+  document.querySelectorAll('#kplist [data-k]').forEach(b=>{
+    b.onclick=e=>{const i=+b.dataset.k;if(KP.edit!==i){KP.edit=i;kpRender()}};
+    // mouse buttons count as keys while listening (left click only via the list, so you can still press Done)
+    b.onmousedown=e=>{const i=+b.dataset.k;if(KP.edit===i&&e.button>0&&MOUSE[e.button]){e.preventDefault();kpSet(i,MOUSE[e.button])}};   // 1 middle, 2 right, 3/4 side buttons
+    b.oncontextmenu=e=>{if(KP.edit===+b.dataset.k)e.preventDefault()};
+  });
+  if($('kpsel')){
+    const i=KP.edit;
+    $('kpsel').onchange=()=>kpSet(i,$('kpsel').value,true);
+    $('kpmod').onchange=()=>{p.keys[i].modifier=$('kpmod').value;kpStatus()};
+    $('kpunb').onclick=()=>kpSet(i,'key.keyboard.unknown');
+    $('kpdef').onclick=()=>{p.keys[i].modifier='NONE';kpSet(i,p.keys[i].default)};
+    $('kpdone').onclick=()=>{KP.edit=-1;kpRender()};
+  }
+  $('kpimp').onclick=()=>{if(kpDirty()&&!confirm('Throw away your unsaved key changes?'))return;$('kpfile').click()};
+  if($('kpsave')) $('kpsave').onclick=kpSave;
+  if($('kpdel')) $('kpdel').onclick=async()=>{
+    if(!confirm('Remove the keybind preset from this pack? Players who already said Yes keep their copy.'))return;
+    try{toast((await post('api/preset/delete',{slug:KP.slug})).msg)}catch(e){fail(e)} kpLoad();
+  };
+}
+function kpStatus(){const s=$('kpsave');if(s)s.disabled=!kpDirty()}
+function kpSet(i,key,keepOpen){KP.preset.keys[i].key=key;if(!keepOpen)KP.edit=-1;kpRender()}
+// while a key is "listening", the next key press sets it (Esc cancels)
+addEventListener('keydown',e=>{
+  if(KP.edit<0||!KP.preset||['INPUT','SELECT','TEXTAREA'].includes((document.activeElement||{}).tagName))return;
+  e.preventDefault();
+  if(e.code==='Escape'){KP.edit=-1;kpRender();return}
+  const k=KEYMAP[e.code]; if(k) kpSet(KP.edit,k); else toast('That key has no Minecraft name – pick it from the list.',true);
+});
+async function kpSave(){
+  try{const r=await post('api/preset/save',{slug:KP.slug,preset:KP.preset,name:KP.preset.name});toast(r.msg);kpLoad()}catch(e){fail(e)}
+}
+$('kpfile').onchange=async()=>{
+  const f=$('kpfile').files[0]; $('kpfile').value=''; if(!f)return;
+  if(f.size>512*1024){toast('That file is over 512 KB.',true);return}
+  let j; try{j=JSON.parse(await f.text())}catch(e){toast('That isn’t a keybind preset file (not JSON).',true);return}
+  if(!j||j.format!=='cyberdeck-keys/1'||!Array.isArray(j.keys)){toast('That isn’t a preset exported by the keybind mod.',true);return}
+  // shown here first; nothing is saved until you press Save preset
+  KP.preset=j; if(!j.name) j.name=((modData&&modData.packs.find(p=>p.slug===KP.slug))||{}).name||'Server preset';
+  KP.saved=''; KP.edit=-1; kpRender(); toast(`Imported ${j.keys.length} keys – check them, then press Save preset.`);
+};
+
+// ---------------- backups
+function size(b){return b>=2**30?(b/2**30).toFixed(1)+' GB':b>=2**20?Math.round(b/2**20)+' MB':Math.max(1,Math.round(b/1024))+' KB'}
+function ago(t){const h=(Date.now()/1000-t)/3600;return h<1?Math.max(1,Math.round(h*60))+' min ago':h<48?Math.round(h)+' h ago':Math.round(h/24)+' days ago'}
+async function backups(){
+  try{
+    const j=await (await fetch('api/backups',{cache:'no-store'})).json();
+    if(!changed('bk',[j.backups,Math.floor(Date.now()/60000)]))return;
+    // "pack-cozy-pack-20261121-1830.zip" -> "cozy-pack · 20261121-1830"
+    const label=b=>{const w=b.world==='minecraft'||!b.world?'':b.world.replace(/^pack-/,'')+' · ';return w+b.file.replace(/^.*-(\d{8}-\d{4,6})\.zip$/,'$1')};
+    $('bklist').innerHTML=j.backups.length?j.backups.map(b=>`<div class="bk"><a href="api/backups/${encodeURIComponent(b.file)}" download>${esc(label(b))}</a><span class="dim">${size(b.bytes)} · ${ago(b.t)}</span></div>`).join('')
+      :'<span class="dim">No backups yet. They happen when the server stops (at most once an hour), on Pack up, or with the button.</span>';
+  }catch(e){}
+}
+$('bbackup').onclick=()=>act('api/backup','Backing up – it shows here when it is saved on the Pi.',null,$('bbackup'));
+
+function all(){refresh(); graph(); netRefresh(); players(); pack(); check(); backups(); consoleRefresh(); modpacks()}
+// nothing is fetched while the page is hidden (phone locked, other tab); it all updates on return
+const every=(fn,ms)=>setInterval(()=>{if(!document.hidden)fn()},ms);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)all()});
+all();
+every(refresh,5000); every(graph,60000); every(netRefresh,20000);
+every(()=>{pack();check();backups()},4000);
+// a switch in progress: every 4 s; otherwise every 30 s (each look at the list is an SSH call when it's stale)
+every(()=>{if(modData&&modData.job&&modData.job.running||S&&S.action)modpacks()},4000); every(modpacks,30000); every(players,30000); every(consoleRefresh,4000);
+</script></body></html>

@@ -1,0 +1,5 @@
+[ne.mi.fm.lo.RuntimeDistCleaner/DISTXFORM]: Attempted to load class net/minecraft/client/renderer/Sheets for invalid dist DEDICATED_SERVER
+[mixin/]: @Mixin target net.minecraft.client.renderer.Sheets was not found mixin.undergroundjungle.json:SheetsMixin
+[mixin/]: Error loading class: net/minecraft/client/gui/GuiGraphics (java.lang.RuntimeException: Attempted to load class net/minecraft/client/gui/GuiGraphics for invalid dist DEDICATED_SERVER)
+[mixin/]: @Mixin target net.minecraft.client.gui.GuiGraphics was not found mixins.squarry.json:GuiGraphicsAccessor
+Crash report saved to: ./crash-reports/crash-2025-01-01_00.00.00-server.txt

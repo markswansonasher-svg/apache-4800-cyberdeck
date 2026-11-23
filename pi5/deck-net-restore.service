@@ -1,0 +1,12 @@
+[Unit]
+Description=Re-apply deck travel mode after boot
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/deck-net restore
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

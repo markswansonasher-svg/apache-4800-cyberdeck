@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# CurseForge API key for modpack previews on the Deck Panel and in Discord.
+#   sudo deck-curseforge-setup
+# Get a key (free): https://console.curseforge.com/ > API keys. It starts with $2a$10$.
+# The PC needs the same key for installs: run setup-curseforge.cmd there.
+set -euo pipefail
+[[ $EUID -eq 0 ]] || { echo "Run with sudo."; exit 1; }
+ENVF=/etc/deck/curseforge.env
+echo "Paste your CurseForge API key (hidden while you type),"
+echo "or type 'remove' to delete the saved one:"
+read -r -s KEY; echo
+if [[ "$KEY" == "remove" ]]; then rm -f "$ENVF"; echo "Removed."; exit 0; fi
+# no spaces or quotes; usually 60 characters
+if ! [[ "$KEY" =~ ^[A-Za-z0-9\$./_+=-]{20,200}$ ]]; then
+  echo "That doesn't look like a CurseForge API key (it usually starts with \$2a\$10\$)."; exit 1
+fi
+if [[ "$KEY" == \$\$* ]]; then echo "Paste the key exactly as CurseForge shows it (no doubled \$ signs)."; exit 1; fi
+echo "Testing it..."
+code="$(curl -s -o /dev/null -w '%{http_code}' -H "x-api-key: $KEY" https://api.curseforge.com/v1/games/432 || true)"
+if [[ "$code" == "401" || "$code" == "403" ]]; then echo "CurseForge refused that key (HTTP $code). Copy it again."; exit 1; fi
+if [[ "$code" != "200" ]]; then echo "Couldn't check it (HTTP ${code:-none} - no internet?). Saving it anyway."; fi
+umask 077
+# read by decklib directly (not a shell), so the $ signs in the key are safe here
+printf 'CF_API_KEY=%s\n' "$KEY" > "$ENVF"
+chown root:deck "$ENVF"; chmod 640 "$ENVF"
+echo "Saved. Deck Panel > Modpacks can now look packs up."
+echo "Next, if you haven't: run k12-windows\\setup-curseforge.cmd on the PC (same key)."
