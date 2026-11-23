@@ -1453,7 +1453,7 @@ namespace Cyberdeck
                 Action go = delegate
                 {
                     if (StartZip.Length > 0) OpenZip(StartZip);      // opened with a zip: straight to its import
-                    else if (current == null) ShowPage(pages.FirstOrDefault(x => x.Title.Replace(" & ", "").Replace(" ", "").ToLowerInvariant() == StartPage) ?? pages[0]);
+                    else if (current == null) ShowPage(FindPage(StartPage) ?? pages[0]);
                     started = true; timer.Start(); Beat();
                 };
                 if (Api.Local == null) { go(); return; }
@@ -1472,6 +1472,37 @@ namespace Cyberdeck
         }
 
         public string StartZip = "";
+        Page FindPage(string key)
+        {
+            return pages.FirstOrDefault(x => x.Title.Replace("&", "").Replace(" ", "").ToLowerInvariant() == key);
+        }
+
+        // Deck.exe started again while this window is open: it hands its --page / zip over to us (Program.Main)
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == Program.WM_COPYDATA)
+            {
+                var cd = (Program.CopyData)Marshal.PtrToStructure(m.LParam, typeof(Program.CopyData));
+                if (cd.Tag == Program.HandOverTag && cd.Ptr != IntPtr.Zero && cd.Size > 0 && cd.Size < 4096)
+                {
+                    string s = Marshal.PtrToStringUni(cd.Ptr, cd.Size / 2).TrimEnd('\0');
+                    BeginInvoke((Action)delegate { HandOver(s); });   // answer the sender at once, act afterwards
+                    m.Result = (IntPtr)1; return;
+                }
+            }
+            base.WndProc(ref m);
+        }
+
+        void HandOver(string s)
+        {
+            int bar = s.IndexOf('|'); if (bar < 0) return;
+            string kind = s.Substring(0, bar), val = s.Substring(bar + 1);
+            bool isZip = kind == "zip" && val.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) && File.Exists(val);
+            if (!started) { if (isZip) StartZip = val; else if (kind == "page") StartPage = val; return; }   // still opening: use it when it does
+            if (isZip) OpenZip(val);
+            else if (kind == "page") { var p = FindPage(val); if (p != null) ShowPage(p); }
+        }
+
         public void OpenZip(string path)
         {
             var mp = pages.OfType<ModpacksPage>().First();
@@ -1594,6 +1625,20 @@ namespace Cyberdeck
         [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
         [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
         [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int cmd);
+        [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
+        [DllImport("user32.dll")] static extern IntPtr SendMessageTimeout(IntPtr h, int msg, IntPtr w, ref CopyData d, int flags, int ms, out IntPtr result);
+
+        public const int WM_COPYDATA = 0x4A;
+        public static readonly IntPtr HandOverTag = (IntPtr)0x4445434B;   // "DECK": only our own hand-overs are read
+        [StructLayout(LayoutKind.Sequential)]
+        public struct CopyData { public IntPtr Tag; public int Size; public IntPtr Ptr; }
+
+        static void HandOver(IntPtr window, string msg)
+        {
+            var cd = new CopyData { Tag = HandOverTag, Size = (msg.Length + 1) * 2, Ptr = Marshal.StringToHGlobalUni(msg) };
+            try { IntPtr r; SendMessageTimeout(window, WM_COPYDATA, IntPtr.Zero, ref cd, 2 /* abort if hung */, 3000, out r); }
+            finally { Marshal.FreeHGlobal(cd.Ptr); }
+        }
 
         [STAThread]
         static void Main(string[] args)
@@ -1613,10 +1658,16 @@ namespace Cyberdeck
             {
                 if (!fresh)
                 {
-                    // already open: bring that window to the front instead of opening a second one
+                    // already open: bring that window to the front instead of opening a second one,
+                    // and pass it what this launch asked for (a page, or a zip opened with Deck)
+                    string ask = zip.Length > 0 ? "zip|" + zip : page.Length > 0 ? "page|" + page : "";
                     foreach (var p in System.Diagnostics.Process.GetProcessesByName(System.Diagnostics.Process.GetCurrentProcess().ProcessName))
                         if (p.MainWindowHandle != IntPtr.Zero && p.Id != System.Diagnostics.Process.GetCurrentProcess().Id)
-                        { ShowWindow(p.MainWindowHandle, 9); SetForegroundWindow(p.MainWindowHandle); }
+                        {
+                            if (IsIconic(p.MainWindowHandle)) ShowWindow(p.MainWindowHandle, 9);   // restore only if minimised (keeps it maximised)
+                            SetForegroundWindow(p.MainWindowHandle);
+                            if (ask.Length > 0) HandOver(p.MainWindowHandle, ask);
+                        }
                     return;
                 }
                 try { SetProcessDPIAware(); } catch { }

@@ -122,6 +122,21 @@
           ]
         },
         {
+          "name": "glTFast for Unity",
+          "note": "Lets Unity import .glb / .gltf models (Poly Haven, Sketchfab, Blockbench...). One line in Packages\\manifest.json, backup kept. Unity 6+.",
+          "actions": [
+            {
+              "label": "Pick from my projects",
+              "run": "%USERPROFILE%\\mcp-servers\\unity\\add-gltfast.cmd"
+            },
+            {
+              "label": "Choose a project folder...",
+              "run": "%USERPROFILE%\\mcp-servers\\unity\\add-gltfast.cmd",
+              "ask_folder": true
+            }
+          ]
+        },
+        {
           "name": "Godot",
           "exe": "%LOCALAPPDATA%\\Programs\\Godot\\Godot_v4.7.2-stable_win64.exe",
           "process": "Godot_v4.7.2-stable_win64",
