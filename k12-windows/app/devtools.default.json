@@ -45,6 +45,12 @@
           "exe": "C:\\Program Files\\Krita (x64)\\bin\\krita.exe"
         },
         {
+          "name": "Blockbench",
+          "exe": "%LOCALAPPDATA%\\Programs\\Blockbench\\Blockbench.exe",
+          "process": "Blockbench",
+          "note": "Low-poly / Minecraft-style models, textures and animations. Exports glTF, OBJ and Java/Bedrock entity models."
+        },
+        {
           "name": "ImageMagick",
           "exe": "C:\\Program Files\\ImageMagick-7.1.2-Q16-HDRI\\magick.exe",
           "cli": true,
