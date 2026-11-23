@@ -280,7 +280,7 @@ async def mc_invite(inter: discord.Interaction, friend: discord.Member, minecraf
             link_err = str(e)
             report.append(f"⚠️ Tailscale link failed: {e}")
     else:
-        report.append("⚠️ No Tailscale API key (sudo deck-tailscale-setup) - share the PC by hand.")
+        report.append("⚠️ No Tailscale API key (Pi: sudo deck-tailscale-setup · PC: set-tailscale-key.ps1) - share the PC by hand.")
 
     join = d.join_address(c, {"k12": {"tailscale_ip": ids.get("tailscale_ip")}}) or "the PC's Tailscale address"
     owner = inter.user.display_name

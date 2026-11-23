@@ -333,6 +333,9 @@ watchdog on the PC, starts with Windows (no window), and talks to the deck agent
 above), then the script asks for the token (hidden, saved as the Windows user variable `DISCORD_TOKEN`), opens the
 "add to server" page, and lets you pick the server and channel by number - no IDs to copy. You become the owner.
 
+For `/mc invite` to include a Tailscale share link, run **`C:\deck\bot\set-tailscale-key.ps1`** (a Tailscale
+API access token; they expire after up to 90 days - run it again then).
+
 Everything works except `/deck pack` and travel mode (they need the Pi). Backups stay in `C:\deck\backups`, and the
 empty-server idle stop is left to the Deck app. Log: `C:\deck\bot\state\deckhost.log`. Once the Pi runs the bot,
 turn this one off with `install-bot.cmd -Remove`.

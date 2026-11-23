@@ -210,16 +210,19 @@ def single_instance():
     return f
 
 
+def user_env(name):
+    """A Windows user variable, fresh from the registry (set-*.ps1 save them there; a process
+    started before that wouldn't see them in its own environment)."""
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as k:
+            return str(winreg.QueryValueEx(k, name)[0]).strip()
+    except OSError:
+        return os.environ.get(name, "").strip()
+
+
 def token():
-    t = os.environ.get("DISCORD_TOKEN", "").strip()
-    if not t:
-        try:
-            import winreg
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as k:
-                t = str(winreg.QueryValueEx(k, "DISCORD_TOKEN")[0]).strip()
-        except OSError:
-            t = ""
-    return t
+    return user_env("DISCORD_TOKEN")
 
 
 def main():
@@ -242,8 +245,13 @@ def main():
         while True:
             time.sleep(3600)
     os.environ["DISCORD_TOKEN"] = tok
-    import deckbot  # noqa: E402  (reads DISCORD_TOKEN when imported)
-    deckbot.TOKEN = tok
+    ts = user_env("TS_API_KEY")                  # /mc invite's Tailscale link (set-tailscale-key.ps1); optional
+    if ts:
+        os.environ["TS_API_KEY"] = ts
+    else:
+        os.environ.pop("TS_API_KEY", None)
+    import deckbot  # noqa: E402  (reads DISCORD_TOKEN and TS_API_KEY when imported)
+    deckbot.TOKEN, deckbot.TS_API_KEY = tok, ts
     while True:
         try:
             deckbot.bot.run(tok, log_handler=None)

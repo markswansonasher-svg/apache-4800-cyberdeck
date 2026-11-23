@@ -36,7 +36,7 @@ Stop-Bot
 foreach ($f in 'decklib.py', 'deckwatch.py', 'deckbot.py') { Copy-Item (Join-Path $pi5 $f) $Dest -Force }
 # (run from C:\deck\bot itself - the Deck app's "Turn PC copy on" - these are already there)
 if ((Resolve-Path $PSScriptRoot).Path.TrimEnd('\') -ne $Dest) {
-    foreach ($f in 'deckhost.py', 'set-discord-bot.ps1', 'install-bot.ps1') { Copy-Item (Join-Path $PSScriptRoot $f) $Dest -Force }
+    foreach ($f in 'deckhost.py', 'set-discord-bot.ps1', 'set-tailscale-key.ps1', 'install-bot.ps1') { Copy-Item (Join-Path $PSScriptRoot $f) $Dest -Force }
 }
 Good 'Copied.'
 
