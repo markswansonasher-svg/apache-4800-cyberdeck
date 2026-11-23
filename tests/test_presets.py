@@ -95,9 +95,18 @@ check("all modifiers in the doc", all(f"`{m}`" in doc for m in d.MODIFIERS))
 agent_src = open(os.path.join(here, "..", "k12-windows", "agent", "deck-agent.ps1"), encoding="utf-8").read()
 check("the PC agent checks the same format name and folder", f"'{d.PRESET_FORMAT}'" in agent_src and "config\\keypresets" in agent_src)
 # ---- the Keybind Presets mod (Java) uses the same rules
+# It's its own repo (github.com/markswansonasher-svg/mc-keybind-presets-mod). Checked when it's cloned next to
+# this one (or KEYBIND_MOD_DIR points at it); skipped otherwise.
 import re
-jp = os.path.join(here, "..", "keybind-mod", "common", "src", "main", "java", "cyberdeck", "keybindpresets", "preset", "PresetFormat.java")
-if os.path.exists(jp):
+mod_dir = os.environ.get("KEYBIND_MOD_DIR") or os.path.join(here, "..", "..", "mc-keybind-presets-mod")
+jp = os.path.join(mod_dir, "common", "src", "main", "java", "cyberdeck", "keybindpresets", "preset", "PresetFormat.java")
+if not os.path.exists(jp):
+    print("SKIP the Keybind Presets mod checks (clone mc-keybind-presets-mod next to this repo to run them)")
+else:
+    ms = os.path.join(mod_dir, "docs", "sample-export.json")
+    check("mod's sample export is the same file as ours", os.path.exists(ms) and
+          open(ms, "rb").read().replace(b"\r\n", b"\n") ==
+          open(os.path.join(here, "presets", "sample-export.json"), "rb").read().replace(b"\r\n", b"\n"))
     js = open(jp, encoding="utf-8").read()
     jre = lambda name: re.search(name + r'\s*=\s*Pattern\.compile\("(.+?)"\);', js).group(1).replace("\\\\", "\\")
     check("mod: same format name", f'FORMAT = "{d.PRESET_FORMAT}"' in js)

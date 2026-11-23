@@ -28,7 +28,8 @@ Everything needed to set up the PC, the Raspberry Pi 5 and the laptop is here.
 
 The rest of this README explains each part in detail, and how to do every step by hand.
 
-Licence: MIT (see `LICENSE`), except `keybind-mod/`, which is CC0 1.0 (see `keybind-mod/LICENSE`).
+Licence: MIT (see `LICENSE`). The deck's Minecraft mod, **Keybind Presets**, is its own project:
+[mc-keybind-presets-mod](https://github.com/markswansonasher-svg/mc-keybind-presets-mod).
 
 ## What's in the kit
 
@@ -64,7 +65,6 @@ cyberdeck/
     undo-laptop.cmd          put the laptop Ethernet back to normal
     travel-on.cmd / travel-off.cmd   laptop internet through the deck
   cad/                       OpenSCAD sources + STL files for the printed parts
-  keybind-mod/               the Keybind Presets mod (Forge + Fabric 1.20.1), see its README
   docs/                      keybind-preset-format.md: the preset file the mod and the deck share
 ```
 
@@ -462,7 +462,7 @@ The crash rules are a list in `pi5/decklib.py` (`CLIENT_CLUES`), with real crash
 
 Each modpack can have **one keybind preset**: your choice of keys for everything the pack's mods add. Players with the **keybind mod** get asked "Add and switch to the server preset?" when they first join that pack. Yes adds it to their own preset list and switches to it. They can switch back to their own keys any time.
 
-The **Keybind Presets** mod (Forge + Fabric, Minecraft 1.20.1) is in `keybind-mod\`. Its README says how to build it and how players use it. Players need it in their own game; to include it in a CurseForge pack it has to be uploaded to CurseForge first.
+The **Keybind Presets** mod (Forge + Fabric, Minecraft 1.20.1) is its own project: [mc-keybind-presets-mod](https://github.com/markswansonasher-svg/mc-keybind-presets-mod) (download it from its Releases page). Its README says how players use it and how to build it. Players need it in their own game; to include it in a CurseForge pack it has to be uploaded to CurseForge first.
 
 1. In Minecraft, with the pack and the keybind mod: set every key the way you want it, then press **Export**.
 2. Deck Panel > **Modpacks** > **Keybind preset**: pick the pack and press **Import from the game…**, then choose the exported file.

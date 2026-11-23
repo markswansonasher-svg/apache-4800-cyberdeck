@@ -44,12 +44,17 @@ check("the app goes standalone only on the deck's own PC, never in the demo",
 # the Dev tools page's default list
 import json as _json
 dt = _json.load(open(os.path.join(app, "devtools.default.json"), encoding="utf-8"))
-known = {"name", "exe", "glob", "appid", "cli", "process", "mcp", "envkey", "note", "actions"}
+known = {"name", "exe", "glob", "appid", "cli", "process", "mcp", "envkey", "note", "actions", "heartbeat"}
 items = [it for g in dt.get("groups", []) for it in g.get("items", [])]
 check(f"Dev tools list: {len(dt.get('groups', []))} groups, {len(items)} tools, every one named",
       len(items) >= 10 and all(it.get("name") for it in items) and all(g.get("name") for g in dt["groups"]))
 check("Dev tools list uses only keys the page knows (a typo would be ignored silently)",
       all(set(it) <= known for it in items) and all(set(a) <= {"label", "run", "args", "ask_folder"} for it in items for a in it.get("actions", [])))
+check("heartbeats use only the keys the page knows, and name a file",
+      all(set(it["heartbeat"]) <= {"file", "max_age_s", "on", "off"} and it["heartbeat"].get("file")
+          for it in items if "heartbeat" in it))
+check("the Discord bot row is there, with a way to turn the PC copy off (for when the Pi takes over)",
+      any(it["name"] == "Discord bot" and any("-Remove" in a.get("args", "") for a in it.get("actions", [])) for it in items))
 check("every button has a label and something to run", all(a.get("label") and a.get("run") for it in items for a in it.get("actions", [])))
 check("the Unity MCP setup is on the Dev tools page", any("add-unity-mcp.cmd" in a.get("run", "") for it in items for a in it.get("actions", [])))
 dts = open(os.path.join(app, "DevTools.cs"), encoding="utf-8").read()
